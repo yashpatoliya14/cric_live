@@ -36,6 +36,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   get:
   sqflite:
+  google_fonts:
   
 
 dev_dependencies:
