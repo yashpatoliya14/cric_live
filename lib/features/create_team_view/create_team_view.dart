@@ -6,64 +6,48 @@ class CreateTeamView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GetX<CreateTeamController>(
-      init: CreateTeamController(),
-      builder:
-          (controller) => Scaffold(
-            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-
-            body: SingleChildScrollView(
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _buildCircleAvatar(title: "Team A", onPressed: () {}),
-                      _buildCircleAvatar(title: "Team B", onPressed: () {}),
-                    ],
-                  ),
-                  SizedBox(height: 20),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: RadioListTile(
-                          value: controller.tossWinnerTeam.value,
-                          groupValue: controller.teams,
-                          onChanged: controller.onTossWinnerTeamChanged,
-
-                          title: Text("Team A"),
-                        ),
+    final controller = Get.put(CreateTeamController());
+    return Scaffold(
+      appBar: AppBar(title: Text(APPBAR_CREATE_TEAM)),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Center(
+                child: Column(
+                  children: [
+                    CircleAvatar(
+                      maxRadius: 50,
+                      child: IconButton(
+                        padding: EdgeInsets.all(38),
+                        icon: Icon(Icons.camera_alt),
+                        onPressed: () {},
                       ),
-                      Expanded(
-                        child: RadioListTile(
-                          value: controller.tossWinnerTeam.value,
-                          groupValue: controller.teams,
-                          onChanged: controller.onTossWinnerTeamChanged,
-                          title: Text("Team B"),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                    ),
+                    Text("Team Logo"),
+                  ],
+                ),
               ),
-            ),
-          ),
-    );
-  }
-
-  _buildCircleAvatar({required String title, required Function onPressed}) {
-    return Column(
-      children: [
-        CircleAvatar(
-          maxRadius: 50,
-          child: IconButton(
-            padding: EdgeInsets.all(38),
-            icon: Icon(Icons.add),
-            onPressed: () => onPressed(),
+              SizedBox(height: 10),
+              CustomTextFormField(
+                controller: controller.controllerName,
+                hintText: "Enter Team Name",
+                labelText: "Team Name",
+              ),
+              SizedBox(height: 15),
+              CustomTextFormField(
+                controller: controller.controllerName,
+                hintText: "Search player...",
+                labelText: "Search",
+              ),
+              SizedBox(height: 10),
+              Center(child: Text("No player data available")),
+            ],
           ),
         ),
-        Text(title),
-      ],
+      ),
     );
   }
 }

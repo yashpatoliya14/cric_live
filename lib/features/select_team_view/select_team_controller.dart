@@ -1,6 +1,5 @@
 import 'package:cric_live/utils/import_exports.dart';
 
-class CreateTeamController extends GetxController {
-  TextEditingController controllerName = TextEditingController();
+class SelectTeamController extends GetxController {
   TextEditingController controllerSearch = TextEditingController();
 }

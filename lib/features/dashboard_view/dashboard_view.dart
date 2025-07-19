@@ -12,8 +12,59 @@ class DashboardView extends StatelessWidget {
           (controller) => Scaffold(
             appBar: AppBar(
               title: Text(
-                "Home",
+                "CricLive",
                 style: Theme.of(context).appBarTheme.titleTextStyle,
+              ),
+              actions: [
+                IconButton(
+                  icon: Icon(Icons.search),
+                  onPressed: () {
+                    Get.toNamed(NAV_SEARCH);
+                  },
+                ),
+              ],
+            ),
+            drawer: Drawer(
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: ListView(
+                  children: [
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Row(
+                          children: [
+                            CircleAvatar(child: Icon(Icons.person)),
+                            SizedBox(width: 10),
+                            Text("Yash Patoliya"),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    ListTile(
+                      leading: Icon(Icons.settings),
+                      title: Text("Settings"),
+                    ),
+
+                    ListTile(
+                      leading: Icon(Icons.dark_mode),
+                      title: Text("Dark Mode"),
+                    ),
+
+                    Container(
+                      margin: EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.secondary,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: ListTile(
+                        leading: Icon(Icons.login_outlined),
+                        title: Text("Log out"),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
             body: IndexedStack(
