@@ -1,7 +1,24 @@
-import 'package:cric_live/features/result_view/result_view.dart';
+import 'package:cric_live/features/choose_player_view/choose_player_binding.dart';
+import 'package:cric_live/features/create_match_view/toss_decision_view.dart';
+import 'package:cric_live/features/login_view/login_binding.dart';
+import 'package:cric_live/features/login_view/login_view.dart';
+import 'package:cric_live/features/match_view/match_binding.dart';
+import 'package:cric_live/features/match_view/match_view.dart';
+import 'package:cric_live/features/otp_screen/otp_screen_binding.dart';
+import 'package:cric_live/features/otp_screen/otp_screen_view.dart';
+import 'package:cric_live/features/shift_inning_view/shift_inning_binding.dart';
+import 'package:cric_live/features/shift_inning_view/shift_inning_view.dart';
+import 'package:cric_live/features/signup_view/signup_binding.dart';
+import 'package:cric_live/features/signup_view/signup_view.dart';
+import 'package:cric_live/features/tournament_view/tournament_binding.dart';
 import 'package:cric_live/utils/import_exports.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  SharedPreferences preferences = await SharedPreferences.getInstance();
+  preferences.setString("apiBaseUrl", "https://192.168.85.147:5001/api");
+  Get.put(preferences);
+
   runApp(const MyApp());
 }
 
@@ -10,102 +27,201 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GetMaterialApp(
-      title: 'CricLive',
-      theme: ThemeData(
-        splashColor: Colors.transparent,
-        scaffoldBackgroundColor: Colors.blue[50],
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.deepOrange,
-            foregroundColor: Colors.white,
-            textStyle: GoogleFonts.openSans(fontWeight: FontWeight.w600),
-          ),
-        ),
+    return ScreenUtilInit(
+      designSize: const Size(375, 812),
+      builder:
+          (context, child) => GetMaterialApp(
+            title: 'CricLive',
+            theme: ThemeData(
+              splashColor: Colors.transparent,
+              scaffoldBackgroundColor: Colors.blue[50],
+              elevatedButtonTheme: ElevatedButtonThemeData(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.deepOrange,
+                  foregroundColor: Colors.white,
+                  textStyle: GoogleFonts.openSans(fontWeight: FontWeight.w600),
+                ),
+              ),
+              textTheme: TextTheme(
+                displayLarge: GoogleFonts.nunito(fontWeight: FontWeight.w800),
+                displayMedium: GoogleFonts.nunito(fontWeight: FontWeight.w500),
+                displaySmall: GoogleFonts.nunito(),
+                titleLarge: GoogleFonts.nunito(fontWeight: FontWeight.w800),
+                titleMedium: GoogleFonts.nunito(fontWeight: FontWeight.w700),
+              ),
 
-        textTheme: GoogleFonts.nunitoTextTheme(),
-        appBarTheme: AppBarTheme(
-          backgroundColor: Colors.white,
-          titleTextStyle: GoogleFonts.openSans(
-            color: Colors.black,
-            fontWeight: FontWeight.w600,
-            fontSize: 20,
-          ),
-          scrolledUnderElevation: 0,
-        ),
-        bottomNavigationBarTheme: BottomNavigationBarThemeData(
-          backgroundColor: Colors.white,
+              appBarTheme: AppBarTheme(
+                backgroundColor: Colors.white,
+                titleTextStyle: GoogleFonts.openSans(
+                  color: Colors.black,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 20,
+                ),
+                scrolledUnderElevation: 0,
+              ),
+              bottomNavigationBarTheme: BottomNavigationBarThemeData(
+                backgroundColor: Colors.white,
+                elevation: 0,
+              ),
+              colorScheme: ColorScheme(
+                brightness: Brightness.light,
+                primary: Colors.deepOrange,
+                onPrimary: Colors.white,
+                secondary: Colors.grey.shade200,
+                onSecondary: Colors.white,
+                error: Colors.red.shade900,
+                onError: Colors.white,
+                surface: Colors.white,
+                onSurface: Colors.black,
+              ),
+              textButtonTheme: TextButtonThemeData(
+                style: TextButton.styleFrom(
+                  shadowColor: Colors.grey,
+                  backgroundColor: Colors.grey.shade100,
+                ),
+              ),
+              listTileTheme: ListTileThemeData(
+                iconColor: Colors.deepOrangeAccent,
+                titleTextStyle: GoogleFonts.nunito(color: Colors.black),
+              ),
+              inputDecorationTheme: InputDecorationTheme(
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12.0),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12.0),
+                  borderSide: BorderSide(color: Colors.grey.shade400),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12.0),
+                  borderSide: const BorderSide(
+                    color: Colors.deepOrange,
+                    width: 2.0,
+                  ),
+                ),
+                labelStyle: TextStyle(color: Colors.grey.shade700),
+                contentPadding: const EdgeInsets.symmetric(
+                  vertical: 16.0,
+                  horizontal: 12.0,
+                ),
+              ),
+            ),
+            darkTheme: ThemeData(),
+            themeMode: ThemeMode.light,
+            initialRoute: NAV_LOGIN,
+            initialBinding: LoginBinding(),
+            getPages: [
+              GetPage(
+                name: NAV_TOURNAMENT_DISPLAY,
+                page: () => TournamentView(),
+                binding: TournamentBinding(),
+                transition: Transition.fade,
+              ),
+              GetPage(
+                name: NAV_TOSS_DECISION,
+                page: () => TossDecisionView(),
+                binding: BindingsBuilder(() {
+                  Get.put(CreateMatchController());
+                }),
+              ),
 
-          elevation: 0,
-        ),
-        colorScheme: ColorScheme(
-          brightness: Brightness.light,
-          primary: Colors.deepOrange,
-          onPrimary: Colors.white,
-          secondary: Colors.blue.shade100,
-          onSecondary: Colors.white,
-          error: Colors.red.shade900,
-          onError: Colors.white,
-          surface: Colors.white,
-          onSurface: Colors.black,
-        ),
-        textButtonTheme: TextButtonThemeData(
-          style: TextButton.styleFrom(
-            shadowColor: Colors.grey,
-            backgroundColor: Colors.grey.shade100,
+              GetPage(
+                name: NAV_MATCH_VIEW,
+                page: () => MatchView(),
+                binding: MatchBinding(),
+                transition: Transition.fade,
+              ),
+              GetPage(
+                name: NAV_OTP_SCREEN,
+                page: () => OtpScreenView(),
+                binding: OtpScreenBinding(),
+                transition: Transition.fade,
+              ),
+              GetPage(
+                name: NAV_LOGIN,
+                page: () => LoginView(),
+                binding: LoginBinding(),
+                transition: Transition.fade,
+              ),
+              GetPage(
+                name: NAV_SIGNUP,
+                page: () => const SignUpView(),
+                binding: SignUpBinding(),
+                transition: Transition.leftToRightWithFade,
+              ),
+              GetPage(
+                name: NAV_DASHBOARD_PAGE,
+                page: () => DashboardView(),
+                binding: DashboardBinding(),
+                transition: Transition.fade,
+              ),
+              GetPage(
+                name: NAV_CREATE_TOURNAMENT,
+                page: () => CreateTournamentView(),
+                binding: CreateTournamentBinding(),
+                transition: Transition.fade,
+              ),
+              GetPage(
+                name: NAV_CREATE_MATCH,
+                page: () => CreateMatchView(),
+                binding: CreateMatchBinding(),
+                transition: Transition.fade,
+              ),
+              GetPage(
+                name: NAV_SEARCH,
+                page: () => SearchScreenView(),
+                transition: Transition.fade,
+              ),
+              GetPage(
+                name: NAV_SELECT_TEAM,
+                page: () => SelectTeamView(),
+                transition: Transition.fade,
+              ),
+              GetPage(
+                name: NAV_CREATE_TEAM,
+                page: () => CreateTeamView(),
+                binding: CreateTeamBinding(),
+                transition: Transition.fade,
+              ),
+              GetPage(
+                name: NAV_SCOREBOARD,
+                page: () => ScoreboardView(),
+                binding: ScoreboardBinding(),
+                transition: Transition.fade,
+              ),
+              GetPage(
+                name: NAV_RESULT,
+                page: () => ResultView(),
+                binding: ResultBinding(),
+                transition: Transition.fade,
+              ),
+              GetPage(
+                name: NAV_MATCH_VIEW,
+                page: () => const MatchView(),
+                binding: MatchBinding(),
+                transition: Transition.fade,
+              ),
+              GetPage(
+                name: NAV_PLAYERS,
+                page: () => PlayersView(),
+                binding: PlayersBinding(),
+                transition: Transition.leftToRight,
+              ),
+              GetPage(
+                name: NAV_CHOOSE_PLAYER,
+                page: () => ChoosePlayerView(),
+                binding: ChoosePlayerBinding(),
+                transition: Transition.leftToRight,
+              ),
+              GetPage(
+                name: NAV_SHIFT_INNING,
+                page: () => ShiftInningView(),
+                binding: ShiftInningBinding(),
+                transition: Transition.leftToRight,
+              ),
+            ],
           ),
-        ),
-        listTileTheme: ListTileThemeData(
-          iconColor: Colors.deepOrangeAccent,
-          titleTextStyle: GoogleFonts.nunito(color: Colors.black),
-        ),
-      ),
-      darkTheme: ThemeData(
-        //implement in later version
-      ),
-      initialRoute: NAV_DASHBOARD_PAGE,
-      getPages: [
-        GetPage(
-          name: NAV_DASHBOARD_PAGE,
-          page: () => DashboardView(),
-          transition: Transition.fade,
-        ),
-        GetPage(
-          name: NAV_CREATE_TOURNAMENT,
-          page: () => CreateTournamentView(),
-          transition: Transition.fade,
-        ),
-        GetPage(
-          name: NAV_CREATE_TOURNAMENT,
-          page: () => CreateTournamentView(),
-          transition: Transition.fade,
-        ),
-        GetPage(
-          name: NAV_SEARCH,
-          page: () => SearchScreenView(),
-          transition: Transition.fade,
-        ),
-        GetPage(
-          name: NAV_SELECT_TEAM,
-          page: () => SelectTeamView(),
-          transition: Transition.fade,
-        ),
-        GetPage(
-          name: NAV_CREATE_TEAM,
-          page: () => CreateTeamView(),
-          transition: Transition.fade,
-        ),
-        GetPage(
-          name: NAV_SCOREBOARD,
-          page: () => ScoreboardView(),
-          transition: Transition.fade,
-        ),
-        GetPage(
-          name: NAV_RESULT,
-          page: () => ResultView(),
-          transition: Transition.fade,
-        ),
-      ],
     );
   }
 }
