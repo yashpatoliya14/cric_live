@@ -357,7 +357,7 @@
 //       );
 //
 //       if (result != null && result is List && result.isNotEmpty) {
-//         final players = result.cast<ChoosePlayerModel>();
+//         final players = result.cast<PlayerModel>();
 //         strikerBatsman.value = players[0].playerName?.toString() ?? "Unknown";
 //         strikerBatsmanId.value = players[0].teamPlayerId ?? 0;
 //       }
@@ -404,7 +404,7 @@
 //       );
 //
 //       if (result != null && result is List && result.isNotEmpty) {
-//         final players = result.cast<ChoosePlayerModel>();
+//         final players = result.cast<PlayerModel>();
 //         strikerBatsman.value = players[0].playerName?.toString() ?? "Unknown";
 //         strikerBatsmanId.value = players[0].teamPlayerId ?? 0;
 //       }
@@ -579,7 +579,7 @@
 //     );
 //
 //     if (result != null && result is List && result.isNotEmpty) {
-//       final players = result.cast<ChoosePlayerModel>();
+//       final players = result.cast<PlayerModel>();
 //       // Update bowler info
 //       bowlerId.value = players[0].teamPlayerId ?? bowlerId.value;
 //       bowler.value = players[0].playerName ?? bowler.value;

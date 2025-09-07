@@ -4,15 +4,15 @@ class ChoosePlayerController extends GetxController {
   int teamId;
   int limit;
   ChoosePlayerController({required this.teamId, required this.limit});
-  ChoosePlayerRepo _repo = ChoosePlayerRepo();
+  final ChoosePlayerRepo _repo = ChoosePlayerRepo();
 
   // Search controller
   final TextEditingController searchController = TextEditingController();
 
   //rx list
-  RxList<ChoosePlayerModel> players = <ChoosePlayerModel>[].obs;
-  RxList<ChoosePlayerModel> filteredPlayers = <ChoosePlayerModel>[].obs;
-  RxList<ChoosePlayerModel> selectedPlayers = <ChoosePlayerModel>[].obs;
+  RxList<PlayerModel> players = <PlayerModel>[].obs;
+  RxList<PlayerModel> filteredPlayers = <PlayerModel>[].obs;
+  RxList<PlayerModel> selectedPlayers = <PlayerModel>[].obs;
 
   // Loading state
   RxBool isLoading = false.obs;
@@ -37,21 +37,17 @@ class ChoosePlayerController extends GetxController {
     super.onClose();
   }
 
-  Future<void> getPlayers() async {
+  getPlayers() async {
     isLoading.value = true;
     try {
       players.value = await _repo.getPlayersByTeamId(teamId) ?? [];
       filteredPlayers.value = players;
-    } catch (e) {
-      // Handle error
-      players.clear();
-      filteredPlayers.clear();
     } finally {
       isLoading.value = false;
     }
   }
 
-  void filterPlayers() {
+  filterPlayers() {
     if (searchQuery.value.isEmpty) {
       filteredPlayers.value = players;
     } else {
@@ -72,12 +68,9 @@ class ChoosePlayerController extends GetxController {
     selectedPlayers.clear();
   }
 
-  onChangedCheckBox(ChoosePlayerModel value) {
-    final alreadySelected = selectedPlayers.any(
-      (p) => p.playerId == value.playerId,
-    );
-    if (alreadySelected) {
-      selectedPlayers.removeWhere((p) => p.playerId == value.playerId);
+  onChangedCheckBox(PlayerModel value) {
+    if (isSelected(value)) {
+      selectedPlayers.removeWhere((p) => p.teamPlayerId == value.teamPlayerId);
     } else {
       if (selectedPlayers.length >= limit) {
         return;
@@ -88,7 +81,7 @@ class ChoosePlayerController extends GetxController {
     selectedPlayers.refresh();
   }
 
-  isSelected(ChoosePlayerModel value) {
-    return selectedPlayers.any((p) => p.playerId == value.playerId);
+  isSelected(PlayerModel value) {
+    return selectedPlayers.any((p) => p.teamPlayerId == value.teamPlayerId);
   }
 }

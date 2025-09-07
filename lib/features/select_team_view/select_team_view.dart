@@ -1,4 +1,3 @@
-import 'package:cric_live/components/team_selection/team_selection.dart';
 import 'package:cric_live/utils/import_exports.dart';
 
 class SelectTeamView extends StatelessWidget {
@@ -16,7 +15,6 @@ class SelectTeamView extends StatelessWidget {
               id: team.id,
               teamId: team.teamId,
               teamName: team.teamName ?? 'Unnamed Team',
-              teamLogo: team.teamLogo,
               tournamentId: team.tournamentId,
               isActive: true, // Assuming all teams are active by default
               totalPlayers:
@@ -123,38 +121,9 @@ class SelectTeamView extends StatelessWidget {
   }
 
   Widget _buildCustomLoading(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.all(32),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.primaryContainer.withOpacity(0.3),
-              shape: BoxShape.circle,
-            ),
-            child: CircularProgressIndicator(color: theme.colorScheme.primary),
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'Loading Teams...',
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: theme.colorScheme.onSurface,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Please wait while we fetch your cricket teams',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
+    return const FullScreenLoader(
+      message:
+          'Loading Teams...\nPlease wait while we fetch your cricket teams',
     );
   }
 }

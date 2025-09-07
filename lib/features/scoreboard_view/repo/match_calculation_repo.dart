@@ -44,7 +44,10 @@ mixin MatchCalculationRepo {
   }
 
   /// Calculate batsman stats (runs, balls, 4s, 6s, strike rate) by ID.
-  Future<Map<String, double>> calculateBatsman(int batsmanId) async {
+  Future<Map<String, double>> calculateBatsman(
+    int batsmanId,
+    int matchId,
+  ) async {
     final Database db = await MyDatabase().database;
     final result = await db.rawQuery(
       '''
@@ -59,9 +62,9 @@ mixin MatchCalculationRepo {
             ELSE 0
           END AS strikeRate
         FROM $TBL_BALL_BY_BALL
-        WHERE strikerBatsmanId = ?
+        WHERE strikerBatsmanId = ? and matchId = ? 
       ''',
-      [batsmanId],
+      [batsmanId, matchId],
     );
     final row = result.first;
     return {

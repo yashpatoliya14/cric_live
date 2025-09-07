@@ -13,82 +13,26 @@ class SyncFeature {
       );
       if (matches.isEmpty) {
         log("⚠️ No match found with id=$matchId and matchIdOnline != null");
-        syncAllMatches();
         return;
       }
-      CreateMatchModel model = CreateMatchModel().fromMap(matches[0]);
+      CreateMatchModel model = CreateMatchModel.fromMap(matches[0]);
 
-      ApiServices _services = ApiServices();
+      ApiServices services = ApiServices();
 
-      final res = await _services.put(
+      Map<String, dynamic> result = await services.put(
         "/CL_Matches/UpdateMatch/${model.matchIdOnline}",
         model.toMap(),
       );
-      if (res.statusCode == 200) {
-        log(
-          "Success to update a match details ::::::::::::::::fromSync:::::::::::::UPDATE MATCH",
-        );
-      } else if (res.statusCode == 500) {
-        log("Server error");
-      }
+
+      log(
+        "Success to update a match details ::::::::::::::::fromSync:::::::::::::UPDATE MATCH",
+      );
     } catch (e) {
       log("Error in syncMatchUpdate");
       log(e.toString());
-    }
-  }
-
-  Future<void> syncAllMatches() async {
-    try {
-      final Database db = await MyDatabase().database;
-      List<Map<String, dynamic>> matches = await db.rawQuery('''
-          Select * from $TBL_MATCHES
-          where matchIdOnline is null
-        ''');
-      if (matches.isEmpty) {
-        return;
+      if (e.toString().contains("Server Error")) {
+        log("Server error");
       }
-      ApiServices _services = ApiServices();
-      List<int> onlineIds = [];
-      for (var match in matches) {
-        // Wrap in matchDto
-        final res = await _services.post("/CL_Matches/CreateMatch", match);
-
-        if (res.statusCode == 200 && res.body.isNotEmpty) {
-          try {
-            Map<String, dynamic> result = jsonDecode(res.body);
-            if (result["matchId"] != null) {
-              onlineIds.add(result["matchId"]);
-            } else {
-              log("⚠️ matchId missing in response: ${res.body}");
-            }
-          } catch (e) {
-            log("⚠️ JSON decode failed: ${res.body}");
-          }
-        } else {
-          log("⚠️ API failed: ${res.statusCode}, ${res.body}");
-        }
-      }
-
-      for (int i = 0; i < onlineIds.length; i++) {
-        CreateMatchModel? data = CreateMatchModel().fromMap(matches[i]);
-
-        if (data == null || data.id == null) {
-          log("⚠️ CreateMatchModel parsing failed for: ${matches[i]}");
-          continue;
-        }
-
-        await db.rawUpdate(
-          '''
-    update $TBL_MATCHES
-    set matchIdOnline = ?
-    where id = ?
-    ''',
-          [onlineIds[i], data.id],
-        );
-      }
-    } catch (e) {
-      log("Error in syncAllMatches");
-      log(e.toString());
     }
   }
 
@@ -107,7 +51,7 @@ class SyncFeature {
       //   log("⚠️ No match found with id=$matchId and matchIdOnline != null");
       //   return;
       // }
-      // CreateMatchModel model = CreateMatchModel().fromMap(matches[0]);
+      // CreateMatchModel model = CreateMatchModel.fromMap(matches[0]);
 
       // ApiServices _services = ApiServices();
       // final res = await _services.put("/CL_Matches/UpdateMatchState", {
@@ -219,7 +163,6 @@ class SyncFeature {
           if (currentStatus) {
             print("🟢 $connectionDesc - Attempting sync...");
             // Trigger sync when connection is restored
-            syncAllMatches();
           } else {
             print("🔴 Connection lost!");
           }

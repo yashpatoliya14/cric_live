@@ -80,9 +80,11 @@ class ScoreboardCalculation extends ScoreboardMatchManager {
   Future<void> calculateBatsman() async {
     strikerBatsmanState.value = await _repo.calculateBatsman(
       strikerBatsmanId.toInt(),
+      matchId,
     );
     nonStrikerBatsmanState.value = await _repo.calculateBatsman(
       nonStrikerBatsmanId.toInt(),
+      matchId,
     );
   }
 

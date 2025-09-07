@@ -92,7 +92,10 @@ class ScoreboardRepo with MatchRepo, MatchCalculationRepo, BallByBallRepo {
         );
 
         for (var b in batsmenData) {
-          Map<String, double> stats = await calculateBatsman(b['playerId']);
+          Map<String, double> stats = await calculateBatsman(
+            b['playerId'],
+            matchId,
+          );
           currentBatsmen.add(
             PlayerBattingResultModel(
               playerId: b['playerId'],
@@ -252,7 +255,7 @@ class ScoreboardRepo with MatchRepo, MatchCalculationRepo, BallByBallRepo {
         String playerName = batsman['playerName'];
 
         /// Get detailed batting stats of the player
-        Map<String, double> stats = await calculateBatsman(playerId);
+        Map<String, double> stats = await calculateBatsman(playerId, matchId);
 
         /// Check if player got out
         List<Map<String, dynamic>> wicketData = await db.rawQuery(
@@ -524,8 +527,6 @@ class ScoreboardRepo with MatchRepo, MatchCalculationRepo, BallByBallRepo {
         'wicketsInOver': wicketsInOver,
       };
 
-      _syncAllMatches();
-
       // Update match state
       await updateMatchState(matchId);
 
@@ -563,13 +564,6 @@ class ScoreboardRepo with MatchRepo, MatchCalculationRepo, BallByBallRepo {
 
     syncFeature.checkConnectivity(
       () async => await syncFeature.syncMatchUpdate(matchId: matchId),
-    );
-  }
-
-  void _syncAllMatches() {
-    SyncFeature syncFeature = SyncFeature();
-    syncFeature.checkConnectivity(
-      () async => await syncFeature.syncAllMatches(),
     );
   }
 }

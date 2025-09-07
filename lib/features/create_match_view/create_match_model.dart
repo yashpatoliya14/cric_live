@@ -11,8 +11,8 @@ class CreateMatchModel {
   int? tossWon;
   String? decision; // default: 'remain'
   int? tournamentId;
-  int? wideRun; // default: 0
-  int? noBallRun; // default: 0
+  int wideRun; // default: 0
+  int noBallRun; // default: 0
   int? strikerBatsmanId;
   int? nonStrikerBatsmanId;
   int? bowlerId;
@@ -20,6 +20,7 @@ class CreateMatchModel {
   String? matchState;
   String? team1Name;
   String? team2Name;
+
   CreateMatchModel({
     this.id,
     this.team1Name,
@@ -59,21 +60,18 @@ class CreateMatchModel {
       'tossWon': tossWon,
       'decision': decision ?? 'remain',
       'tournamentId': tournamentId,
-      'wideRun': wideRun ?? 0,
-      'noBallRun': noBallRun ?? 0,
+      'wideRun': wideRun,
+      'noBallRun': noBallRun,
       'strikerBatsmanId': strikerBatsmanId,
       'nonStrikerBatsmanId': nonStrikerBatsmanId,
       'bowlerId': bowlerId,
       'currentBattingTeamId': currentBattingTeamId,
       'matchState': matchState,
-      // 'team1Name': team1Name,
-      // 'team2Name': team2Name,
     };
   }
 
-  /// Create object from map (e.g. from DB)
-  CreateMatchModel fromMap(Map<String, dynamic> map) {
-    // Helper function to safely parse integer values
+  /// Create object from map (e.g. from DB/API)
+  factory CreateMatchModel.fromMap(Map<String, dynamic> map) {
     int? safeParseInt(dynamic value) {
       if (value == null) return null;
       return int.tryParse(value.toString());
@@ -87,12 +85,12 @@ class CreateMatchModel {
       matchDate:
           map['matchDate'] == null
               ? null
-              : DateTime.parse(map['matchDate'] as String),
+              : DateTime.tryParse(map['matchDate'].toString()),
       inningNo: safeParseInt(map['inningNo']),
       overs: safeParseInt(map['overs']),
-      status: map['status'] as String?,
+      status: map['status']?.toString(),
       tossWon: safeParseInt(map['tossWon']),
-      decision: map['decision'] as String?,
+      decision: map['decision']?.toString() ?? 'remain',
       tournamentId: safeParseInt(map['tournamentId']),
       wideRun: safeParseInt(map['wideRun']) ?? 0,
       noBallRun: safeParseInt(map['noBallRun']) ?? 0,
@@ -100,10 +98,10 @@ class CreateMatchModel {
       nonStrikerBatsmanId: safeParseInt(map['nonStrikerBatsmanId']),
       bowlerId: safeParseInt(map['bowlerId']),
       currentBattingTeamId: safeParseInt(map['currentBattingTeamId']),
-      matchState: map['matchState'] as String?,
+      matchState: map['matchState']?.toString(),
       uid: safeParseInt(map['uid']),
-      team1Name: map['team1Name'] as String?,
-      team2Name: map['team2Name'] as String?,
+      team1Name: map['team1Name']?.toString(),
+      team2Name: map['team2Name']?.toString(),
     );
   }
 }

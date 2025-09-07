@@ -21,9 +21,46 @@ class ApiServices {
     return client;
   }
 
+  // Helper to check if status code indicates success
+  bool _isSuccessStatusCode(int statusCode) {
+    return statusCode >= 200 && statusCode < 300;
+  }
+
   // Private helper to handle the HTTP response.
-  Response _handleResponse(http.Response response) {
-    return response;
+  Map<String, dynamic> _handleResponse(http.Response response) {
+    switch (response.statusCode) {
+      case 200:
+      case 201:
+      case 202:
+        // Success responses - return parsed JSON
+        try {
+          return jsonDecode(response.body) as Map<String, dynamic>;
+        } catch (e) {
+          // If response body is not JSON, return a wrapper
+          return {
+            'success': true,
+            'statusCode': response.statusCode,
+            'data': response.body,
+          };
+        }
+
+      case 400:
+        throw Exception("Bad Request: ${response.body}");
+
+      case 401:
+        throw Exception("Unauthorized: ${response.body}");
+
+      case 404:
+        throw Exception("Not Found: ${response.body}");
+
+      case 500:
+        throw Exception("Server Error: ${response.body}");
+
+      default:
+        throw Exception(
+          "Unexpected Error [${response.statusCode}]: ${response.body}",
+        );
+    }
   }
 
   // Common headers for all requests.
@@ -33,7 +70,7 @@ class ApiServices {
   };
 
   // ------------------------- GET Request -------------------------
-  Future<Response> get(String endpoint) async {
+  Future<Map<String, dynamic>> get(String endpoint) async {
     final uri = Uri.parse('$baseUrl$endpoint');
     print('=== API GET Request ===');
     print('URL: $uri');
@@ -41,10 +78,12 @@ class ApiServices {
     try {
       // Use insecure client for development
       final client = IOClient(_createInsecureHttpClient());
-      final response = await client.get(uri, headers: _headers);
+      final response = await client
+          .get(uri, headers: _headers)
+          .timeout(_timeout);
       client.close();
       print('Response Status: ${response.statusCode}');
-      if (response.statusCode != 200) {
+      if (!_isSuccessStatusCode(response.statusCode)) {
         print('Response Body: ${response.body}');
         print('❌ API GET Failed: ${response.statusCode}');
       } else {
@@ -67,7 +106,7 @@ class ApiServices {
   }
 
   // ------------------------- POST Request -------------------------
-  Future<Response> post(String endpoint, dynamic data) async {
+  Future<Map<String, dynamic>> post(String endpoint, dynamic data) async {
     final uri = Uri.parse('$baseUrl$endpoint');
     print('=== API POST Request ===');
     print('URL: $uri');
@@ -97,16 +136,21 @@ class ApiServices {
   }
 
   // ------------------------- PUT Request -------------------------
-  Future<Response> put(String endpoint, Map<String, dynamic> data) async {
+  Future<Map<String, dynamic>> put(
+    String endpoint,
+    Map<String, dynamic> data,
+  ) async {
     final uri = Uri.parse('$baseUrl$endpoint');
+    print('=== API PUT Request ===');
+    print('URL: $uri');
+    print('Data: $data');
     try {
       final client = IOClient(_createInsecureHttpClient());
-      final response = await client.put(
-        uri,
-        headers: _headers,
-        body: jsonEncode(data),
-      );
+      final response = await client
+          .put(uri, headers: _headers, body: jsonEncode(data))
+          .timeout(_timeout);
       client.close();
+      print('Response Status: ${response.statusCode}');
       return _handleResponse(response);
     } on SocketException {
       throw const SocketException('No Internet connection. Please try again.');
@@ -124,12 +168,17 @@ class ApiServices {
   }
 
   // ------------------------- DELETE Request -------------------------
-  Future<Response> delete(String endpoint) async {
+  Future<Map<String, dynamic>> delete(String endpoint) async {
     final uri = Uri.parse('$baseUrl$endpoint');
+    print('=== API DELETE Request ===');
+    print('URL: $uri');
     try {
       final client = IOClient(_createInsecureHttpClient());
-      final response = await client.delete(uri, headers: _headers);
+      final response = await client
+          .delete(uri, headers: _headers)
+          .timeout(_timeout);
       client.close();
+      print('Response Status: ${response.statusCode}');
       return _handleResponse(response);
     } on SocketException {
       throw const SocketException('No Internet connection. Please try again.');

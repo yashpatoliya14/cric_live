@@ -63,9 +63,9 @@ class ScoreboardBallActionManager extends ScoreboardInningsManager {
       if ([1, 3, 5].contains(runs)) {
         onTapSwap();
       }
-    } catch (e) {
+    } catch (e, st) {
       log(
-        ":::: Error at add data entry from local-database in tap run :::: \n $e",
+        "$st:::: Error at add data entry from local-database in tap run :::: \n $e",
       );
     }
   }
@@ -101,7 +101,7 @@ class ScoreboardBallActionManager extends ScoreboardInningsManager {
       );
 
       if (result != null && result is List && result.isNotEmpty) {
-        final players = result.cast<ChoosePlayerModel>();
+        final players = result.cast<PlayerModel>();
         strikerBatsman.value = players[0].playerName?.toString() ?? "Unknown";
         strikerBatsmanId.value = players[0].teamPlayerId ?? 0;
       }
@@ -148,7 +148,7 @@ class ScoreboardBallActionManager extends ScoreboardInningsManager {
       );
 
       if (result != null && result is List && result.isNotEmpty) {
-        final players = result.cast<ChoosePlayerModel>();
+        final players = result.cast<PlayerModel>();
         strikerBatsman.value = players[0].playerName?.toString() ?? "Unknown";
         strikerBatsmanId.value = players[0].teamPlayerId ?? 0;
       }
@@ -264,9 +264,11 @@ class ScoreboardBallActionManager extends ScoreboardInningsManager {
     // Recalculate each batsman’s stats separately
     strikerBatsmanState.value = await _repo.calculateBatsman(
       strikerBatsmanId.toInt(),
+      matchId,
     );
     nonStrikerBatsmanState.value = await _repo.calculateBatsman(
       nonStrikerBatsmanId.toInt(),
+      matchId,
     );
   }
 }

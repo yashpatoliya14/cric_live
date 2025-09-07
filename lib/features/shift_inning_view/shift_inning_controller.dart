@@ -127,14 +127,14 @@ class ShiftInningController extends GetxController {
         return;
       }
 
-      // Safely cast the result to List<ChoosePlayerModel>
-      List<ChoosePlayerModel> batters;
-      if (result is List<ChoosePlayerModel>) {
+      // Safely cast the result to List<PlayerModel>
+      List<PlayerModel> batters;
+      if (result is List<PlayerModel>) {
         batters = result;
       } else if (result is List) {
         // Try to cast each item
         try {
-          batters = result.cast<ChoosePlayerModel>();
+          batters = result.cast<PlayerModel>();
         } catch (e) {
           _showError("Invalid player data received. Please try again.");
           return;
@@ -200,14 +200,14 @@ class ShiftInningController extends GetxController {
         return;
       }
 
-      // Safely cast the result to List<ChoosePlayerModel>
-      List<ChoosePlayerModel> bowlers;
-      if (result is List<ChoosePlayerModel>) {
+      // Safely cast the result to List<PlayerModel>
+      List<PlayerModel> bowlers;
+      if (result is List<PlayerModel>) {
         bowlers = result;
       } else if (result is List) {
         // Try to cast each item
         try {
-          bowlers = result.cast<ChoosePlayerModel>();
+          bowlers = result.cast<PlayerModel>();
         } catch (e) {
           _showError("Invalid player data received. Please try again.");
           return;

@@ -54,7 +54,7 @@ class ScoreboardInningsManager extends ScoreboardCalculation {
     );
 
     if (result != null && result is List && result.isNotEmpty) {
-      final players = result.cast<ChoosePlayerModel>();
+      final players = result.cast<PlayerModel>();
       // Update bowler info
       bowlerId.value = players[0].teamPlayerId ?? bowlerId.value;
       bowler.value = players[0].playerName ?? bowler.value;
@@ -101,7 +101,6 @@ class ScoreboardInningsManager extends ScoreboardCalculation {
       Get.toNamed(NAV_SHIFT_INNING, arguments: {'matchId': matchId});
     } else {
       endMatch();
-      // Get.delete<ScoreboardController>();
       Get.offNamed(NAV_RESULT, arguments: {'matchId': matchId});
     }
   }

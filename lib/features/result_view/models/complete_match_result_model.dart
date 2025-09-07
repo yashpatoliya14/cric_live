@@ -4,7 +4,7 @@ import 'team_innings_result_model.dart';
 class CompleteMatchResultModel {
   int? matchId;
   String? matchTitle;
-  String? venue;
+  String? location;
   DateTime? date;
   String? matchType; // 'T20', 'ODI', 'Test'
   String? status; // 'completed', 'scheduled', 'live'
@@ -36,7 +36,7 @@ class CompleteMatchResultModel {
   CompleteMatchResultModel({
     this.matchId,
     this.matchTitle,
-    this.venue,
+    this.location,
     this.date,
     this.matchType,
     this.status,
@@ -201,7 +201,7 @@ class CompleteMatchResultModel {
     return CompleteMatchResultModel(
       matchId: toInt(json['matchId']),
       matchTitle: json['matchTitle'] as String?,
-      venue: json['venue'] as String?,
+      location: json['venue'] as String?,
       date:
           json['date'] != null ? DateTime.parse(json['date'] as String) : null,
       matchType: json['matchType'] as String?,
@@ -248,7 +248,7 @@ class CompleteMatchResultModel {
     return {
       'matchId': matchId,
       'matchTitle': matchTitle,
-      'venue': venue,
+      'location': location,
       'date': date.toString(),
       'matchType': matchType,
       'status': status,

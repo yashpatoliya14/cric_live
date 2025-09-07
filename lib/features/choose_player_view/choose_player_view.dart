@@ -79,7 +79,7 @@ class ChoosePlayerView extends StatelessWidget {
         children: [
           Obx(
             () => Text(
-              '${SELECTED_PLAYERS}: ${controller.selectedPlayers.length}/${controller.limit}',
+              '$SELECTED_PLAYERS: ${controller.selectedPlayers.length}/${controller.limit}',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w600,
                 color:
@@ -174,19 +174,7 @@ class ChoosePlayerView extends StatelessWidget {
   }
 
   Widget _buildLoadingState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          CircularProgressIndicator(),
-          const SizedBox(height: 16),
-          Text(
-            'Loading players...',
-            style: TextStyle(color: Colors.grey.shade600),
-          ),
-        ],
-      ),
-    );
+    return const FullScreenLoader(message: 'Loading players...');
   }
 
   Widget _buildEmptyState(
@@ -243,7 +231,7 @@ class ChoosePlayerView extends StatelessWidget {
   }
 
   Widget _buildPlayerCard(
-    ChoosePlayerModel player,
+    PlayerModel player,
     ChoosePlayerController controller,
     BuildContext context,
   ) {
@@ -315,7 +303,7 @@ class ChoosePlayerView extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Player ID: ${player.playerId ?? 'N/A'}',
+                        'Player ID: ${player.teamPlayerId ?? 'N/A'}',
                         style: TextStyle(
                           fontSize: 12,
                           color: Colors.grey.shade600,

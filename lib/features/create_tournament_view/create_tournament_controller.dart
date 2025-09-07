@@ -1,8 +1,3 @@
-import 'package:cric_live/features/create_tournament_view/create_tournament_model.dart';
-import 'package:cric_live/features/create_tournament_view/create_tournament_repo.dart';
-import 'package:cric_live/features/create_tournament_view/models/user_model.dart';
-import 'package:cric_live/features/dashboard_view/models/team_model.dart';
-import 'package:cric_live/services/auth/auth_service.dart';
 import 'package:cric_live/utils/import_exports.dart';
 
 class CreateTournamentController extends GetxController {
@@ -30,6 +25,7 @@ class CreateTournamentController extends GetxController {
 
   // Users and selection
   final RxList<UserModel> allUsers = <UserModel>[].obs;
+  //search based
   final RxList<UserModel> filteredUsers = <UserModel>[].obs;
   final RxList<UserModel> selectedScorers = <UserModel>[].obs;
 
@@ -226,7 +222,11 @@ class CreateTournamentController extends GetxController {
         );
         Get.toNamed(
           NAV_TOURNAMENT_DISPLAY,
-          arguments: {"tournamentId": tournamentId},
+          arguments: {
+            "tournamentId": tournamentId,
+            "hostId":
+                tokenModel.uid, // Pass the hostId which is the creator's uid
+          },
         );
         // Clear form after successful creation
         _clearForm();

@@ -1,5 +1,4 @@
 import 'package:cric_live/utils/import_exports.dart';
-import 'package:cric_live/utils/responsive_utils.dart';
 
 /// Enhanced Scoreboard View with fixed layout issues and improved UI
 class ScoreboardView extends StatelessWidget {
@@ -34,8 +33,6 @@ class ScoreboardView extends StatelessWidget {
       canPop: false,
       onPopInvoked: (didPop) async {
         final result = await controller.onWillPopScope();
-
-        Get.back();
       },
       child: Scaffold(
         backgroundColor: Colors.grey.shade50,

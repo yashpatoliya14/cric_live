@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:cric_live/utils/import_exports.dart';
 
 class CustomTextFormField extends StatelessWidget {
   final TextEditingController controller;
@@ -8,6 +8,7 @@ class CustomTextFormField extends StatelessWidget {
   final TextInputType keyboardType;
   final Function(String?)? onChanged;
   final Function()? onTap;
+  final Function(String)? onFieldSubmitted;
   const CustomTextFormField({
     super.key,
     required this.controller,
@@ -17,6 +18,7 @@ class CustomTextFormField extends StatelessWidget {
     this.keyboardType = TextInputType.text,
     this.onChanged,
     this.onTap,
+    this.onFieldSubmitted,
   });
 
   @override
@@ -48,6 +50,7 @@ class CustomTextFormField extends StatelessWidget {
       validator: validator,
       onChanged: onChanged,
       onTap: onTap,
+      onFieldSubmitted: onFieldSubmitted,
     );
   }
 }

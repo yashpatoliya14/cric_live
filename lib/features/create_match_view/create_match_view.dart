@@ -1,7 +1,5 @@
 import 'package:cric_live/utils/import_exports.dart';
 
-import 'widgets/step_progress_indicator.dart';
-
 class CreateMatchView extends StatelessWidget {
   CreateMatchView({super.key});
 
@@ -15,11 +13,15 @@ class CreateMatchView extends StatelessWidget {
       builder:
           (controller) => Form(
             key: _formKey,
-            child: Scaffold(
-              backgroundColor: colorScheme.surface,
-              appBar: _buildModernAppBar(context),
-              body: _buildBody(context, controller),
-              bottomNavigationBar: _buildActionButtons(context, controller),
+            child: SafeArea(
+              top: false,
+              child: Scaffold(
+                backgroundColor: colorScheme.surface,
+                appBar: _buildModernAppBar(context),
+
+                body: _buildBody(context, controller),
+                bottomNavigationBar: _buildActionButtons(context, controller),
+              ),
             ),
           ),
     );

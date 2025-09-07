@@ -1,4 +1,3 @@
-import 'package:cric_live/features/dashboard_view/models/team_model.dart';
 import 'package:cric_live/utils/import_exports.dart';
 
 class CreateTournamentView extends StatelessWidget {
@@ -12,16 +11,7 @@ class CreateTournamentView extends StatelessWidget {
       appBar: AppBar(title: const Text('Create Tournament'), elevation: 0),
       body: Obx(() {
         if (controller.isLoading.value) {
-          return const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CircularProgressIndicator(),
-                SizedBox(height: 16),
-                Text('Loading users and teams...'),
-              ],
-            ),
-          );
+          return const FullScreenLoader(message: 'Loading users and teams...');
         }
 
         return SingleChildScrollView(
@@ -482,8 +472,7 @@ class CreateTournamentView extends StatelessWidget {
         TeamModel newTeam = TeamModel(
           id: teamId,
           name: teamName,
-          shortName: teamName, // Use teamName as shortName for now
-          logo: null,
+          shortName: teamName,
         );
 
         // Check if team is already selected

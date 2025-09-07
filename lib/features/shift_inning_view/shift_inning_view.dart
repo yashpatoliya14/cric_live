@@ -35,19 +35,7 @@ class _LoadingView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          CircularProgressIndicator(strokeWidth: 3),
-          SizedBox(height: 24),
-          Text(
-            "Loading match data...",
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-          ),
-        ],
-      ),
-    );
+    return const FullScreenLoader(message: 'Loading match data...');
   }
 }
 

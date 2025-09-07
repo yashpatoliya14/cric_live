@@ -1,23 +1,13 @@
-import 'package:cric_live/features/choose_player_view/choose_player_binding.dart';
-import 'package:cric_live/features/create_match_view/toss_decision_view.dart';
-import 'package:cric_live/features/login_view/login_binding.dart';
-import 'package:cric_live/features/login_view/login_view.dart';
-import 'package:cric_live/features/match_view/match_binding.dart';
-import 'package:cric_live/features/match_view/match_view.dart';
-import 'package:cric_live/features/otp_screen/otp_screen_binding.dart';
-import 'package:cric_live/features/otp_screen/otp_screen_view.dart';
-import 'package:cric_live/features/shift_inning_view/shift_inning_binding.dart';
-import 'package:cric_live/features/shift_inning_view/shift_inning_view.dart';
-import 'package:cric_live/features/signup_view/signup_binding.dart';
-import 'package:cric_live/features/signup_view/signup_view.dart';
-import 'package:cric_live/features/tournament_view/tournament_binding.dart';
 import 'package:cric_live/utils/import_exports.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   SharedPreferences preferences = await SharedPreferences.getInstance();
-  preferences.setString("apiBaseUrl", "https://192.168.85.147:5001/api");
   Get.put(preferences);
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown, // optional (for upside down)
+  ]);
 
   runApp(const MyApp());
 }
@@ -27,6 +17,9 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    SharedPreferences preferences = Get.find<SharedPreferences>();
+    String? token = preferences.getString("token");
+
     return ScreenUtilInit(
       designSize: const Size(375, 812),
       builder:
@@ -109,8 +102,8 @@ class MyApp extends StatelessWidget {
             ),
             darkTheme: ThemeData(),
             themeMode: ThemeMode.light,
-            initialRoute: NAV_LOGIN,
-            initialBinding: LoginBinding(),
+            initialRoute: token == null ? NAV_LOGIN : NAV_DASHBOARD_PAGE,
+            initialBinding: token == null ? LoginBinding() : DashboardBinding(),
             getPages: [
               GetPage(
                 name: NAV_TOURNAMENT_DISPLAY,
@@ -218,6 +211,20 @@ class MyApp extends StatelessWidget {
                 name: NAV_SHIFT_INNING,
                 page: () => ShiftInningView(),
                 binding: ShiftInningBinding(),
+                transition: Transition.leftToRight,
+              ),
+
+              GetPage(
+                name: NAV_FORGOT_PASSWORD_EMAIL,
+                page: () => ForgotPasswordEmailView(),
+                binding: ForgotPasswordEmailBinding(),
+                transition: Transition.leftToRight,
+              ),
+
+              GetPage(
+                name: NAV_RESET_PASSWORD,
+                page: () => ResetPasswordView(),
+                binding: ResetPasswordBinding(),
                 transition: Transition.leftToRight,
               ),
             ],

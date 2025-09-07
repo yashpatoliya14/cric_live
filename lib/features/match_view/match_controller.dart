@@ -1,3 +1,5 @@
+import 'dart:developer' as developer;
+
 import 'package:cric_live/features/match_view/match_view_repo.dart';
 import 'package:cric_live/services/polling/polling_service.dart';
 import 'package:cric_live/utils/import_exports.dart';
@@ -85,14 +87,14 @@ class MatchController extends GetxController {
     if (matchResult.value == null) return '';
 
     final status = matchResult.value!.status?.toLowerCase();
-    final venue = matchResult.value!.venue;
+    final location = matchResult.value!.location;
     final date = matchResult.value!.date;
 
     List<String> subtitleParts = [];
 
-    // Add venue if available
-    if (venue != null && venue.isNotEmpty) {
-      subtitleParts.add(venue);
+    // Add location if available
+    if (location != null && location.isNotEmpty) {
+      subtitleParts.add(location);
     }
 
     // Add date if available
@@ -117,8 +119,8 @@ class MatchController extends GetxController {
     return matchResult.value?.formatDisplay ?? 'Cricket Match';
   }
 
-  String get venue {
-    return matchResult.value?.venue ?? '';
+  String get location {
+    return matchResult.value?.location ?? '';
   }
 
   String get tossInfo {
@@ -138,14 +140,14 @@ class MatchController extends GetxController {
 
     List<String> infoParts = [];
 
-    // Add match type and venue
+    // Add match type and location
     if (matchResult.value!.matchType != null) {
       infoParts.add(matchResult.value!.formatDisplay);
     }
 
-    if (matchResult.value!.venue != null &&
-        matchResult.value!.venue!.isNotEmpty) {
-      infoParts.add('at ${matchResult.value!.venue!}');
+    if (matchResult.value!.location != null &&
+        matchResult.value!.location!.isNotEmpty) {
+      infoParts.add('at ${matchResult.value!.location!}');
     }
 
     return infoParts.join(' ');
@@ -182,7 +184,8 @@ class MatchController extends GetxController {
           matchResult.value!.highestIndividualScore.toString(),
       'Highest Team Score': matchResult.value!.highestTeamScore.toString(),
       'Match Type': matchResult.value!.formatDisplay,
-      if (matchResult.value!.venue != null) 'Venue': matchResult.value!.venue!,
+      if (matchResult.value!.location != null)
+        'location': matchResult.value!.location!,
     };
   }
 
@@ -212,8 +215,11 @@ class MatchController extends GetxController {
 
   String getTeamRunRate(int inningNo) {
     final innings = inningNo == 1 ? team1Innings : team2Innings;
-    if (innings?.currentRunRate == null) return '';
-    return 'Run Rate: ${innings!.currentRunRate!.toStringAsFixed(2)}';
+    if (innings?.runRate == null && innings?.calculatedRunRate == 0.0) {
+      return '';
+    }
+    final rate = innings?.runRate ?? innings?.calculatedRunRate ?? 0.0;
+    return 'Run Rate: ${rate.toStringAsFixed(2)}';
   }
 
   String getTeamRequiredRunRate(int inningNo) {
@@ -276,7 +282,8 @@ class MatchController extends GetxController {
       log('Error in loadMatchResult: $e');
     } finally {
       isLoading.value = false;
-      print('=== Loading complete, isLoading: ${isLoading.value} ===');
+      // Use developer.log instead of print for debugging
+      developer.log('=== Loading complete, isLoading: ${isLoading.value} ===');
     }
   }
 

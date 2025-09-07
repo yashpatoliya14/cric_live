@@ -1,10 +1,13 @@
 import 'package:cric_live/utils/import_exports.dart';
 
-class CreateMatchRepo extends ScoreboardRepo {
+class CreateMatchRepo {
+  final ApiServices _services = ApiServices();
+  final ScoreboardRepo scoreboardRepo = ScoreboardRepo();
+
   /// create a match in locally
   Future<int> createMatch(CreateMatchModel data) async {
     try {
-      Database db = await MyDatabase().database;
+      final Database db = await MyDatabase().database;
       return await db.insert(TBL_MATCHES, data.toMap());
     } catch (e) {
       log("$e");
@@ -12,72 +15,86 @@ class CreateMatchRepo extends ScoreboardRepo {
     }
   }
 
+  /// function is used for get match wherever ** use scheduled a match then this function is called **
   Future<CreateMatchModel?> getMatchById(int matchId) async {
-    ApiServices services = ApiServices();
     try {
-      Response res = await services.get("/CL_Matches/GetMatchById/$matchId");
-      if (res.statusCode == 200) {
-        Map<String, dynamic> result = jsonDecode(res.body);
+      // Check internet connection first
+      bool hasInternet = await InternetRequiredService.checkForMatchCreation();
+      if (!hasInternet) {
+        return null; // User cancelled or still no internet
+      }
 
-        log(result["match"].toString());
+      Map<String, dynamic> result = await _services.get(
+        "/CL_Matches/GetMatchById/$matchId",
+      );
 
-        if (result["match"] != null) {
-          return CreateMatchModel().fromMap(result["match"]);
-        } else {
-          log("⚠️ matchId missing in response: ${res.body}");
-        }
+      if (result["match"] != null) {
+        return CreateMatchModel.fromMap(result["match"]);
+      } else {
+        log("⚠️ match data missing in response: $result");
       }
     } catch (e) {
-      log("⚠️ JSON decode failed: $e");
+      log("⚠️ API request failed: $e");
     }
     return null;
   }
 
   createMatchOnline(CreateMatchModel match) async {
-    ApiServices services = ApiServices();
-    log(match.toMap().toString());
-    Response res = await services.post(
-      "/CL_Matches/CreateMatch",
-      match.toMap(),
-    );
-    if (res.statusCode == 200) {
-      try {
-        Map<String, dynamic> result =
-            jsonDecode(res.body) as Map<String, dynamic>;
-        log(result.toString());
-        if (result["matchId"] != null) {
-          return result["matchId"];
-        } else {
-          log("⚠️ matchId missing in response: ${res.body}");
-        }
-      } catch (e) {
-        log("⚠️ JSON decode failed: ${res.body}");
+    try {
+      // Check internet connection first
+      bool hasInternet = await InternetRequiredService.checkForMatchCreation();
+      if (!hasInternet) {
+        return; // User cancelled or still no internet
       }
+
+      Map<String, dynamic> result = await _services.post(
+        "/CL_Matches/CreateMatch",
+        match.toMap(),
+      );
+      if (result["matchId"] != null) {
+        return result["matchId"];
+      } else {
+        log("⚠️ matchId missing in response: $result");
+      }
+    } catch (e) {
+      log("⚠️ API request failed: $e");
     }
   }
 
-  Future<void> updateMatchOnline({required CreateMatchModel model}) async {
+  int? getUidOfUser() {
     try {
-      log(
-        "::::::::::::::::::::::::::::::::::::::::::::::::::::;update match ${model.toMap()}",
-      );
-      ApiServices _services = ApiServices();
-      final res = await _services.put(
+      //fetch uid
+      AuthService service = AuthService();
+      TokenModel? tokenModel = service.fetchInfoFromToken();
+      if (tokenModel == null) {
+        throw Exception("userid is not found");
+      }
+      return tokenModel.uid;
+    } catch (e, stackTrace) {
+      log("token not found !!!!! $e and $stackTrace");
+      return null;
+    }
+  }
+
+  updateMatchOnline({required CreateMatchModel model}) async {
+    try {
+      // Check internet connection first
+      bool hasInternet = await InternetRequiredService.checkForMatchCreation();
+      if (!hasInternet) {
+        return; // User cancelled or still no internet
+      }
+
+      Map<String, dynamic> result = await _services.put(
         "/CL_Matches/UpdateMatch/${model.matchIdOnline}",
         model.toMap(),
       );
-      if (res.statusCode == 200) {
-        log(
-          "Success to update a match details :::::::::::::::::::::::::::::UPDATE MATCH",
-        );
-      } else if (res.statusCode == 500) {
-        log("Server error");
-      } else {
-        throw Exception("Unexpected error");
-      }
+      log("match is updated");
     } catch (e) {
       log("Error in syncMatchUpdate");
       log(e.toString());
+      if (e.toString().contains("Server Error")) {
+        log("Server error");
+      }
     }
   }
 }

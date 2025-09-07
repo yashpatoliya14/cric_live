@@ -1,31 +1,36 @@
-import 'package:cric_live/features/create_match_view/create_match_repo.dart';
-import 'package:cric_live/services/auth/auth_service.dart';
-import 'package:cric_live/services/auth/token_model.dart';
 import 'package:cric_live/utils/import_exports.dart';
 
 class CreateMatchController extends GetxController {
   final CreateMatchRepo _repo = CreateMatchRepo();
   final SelectTeamRepo _selectTeamRepo = SelectTeamRepo();
+
+  //variables
   int? tournamentId;
   int? matchIdOnline;
+
+  //Rx variables
   var isReady = false.obs;
-  //variables
   var team1 = {}.obs;
   var team2 = {}.obs;
-  RxList<ChoosePlayerModel> batsmanList = <ChoosePlayerModel>[].obs;
-  RxList<ChoosePlayerModel> bowlerList = <ChoosePlayerModel>[].obs;
-  //Rx variables
+  RxList<PlayerModel> batsmanList = <PlayerModel>[].obs;
+  RxList<PlayerModel> bowlerList = <PlayerModel>[].obs;
+
   RxString tossWinnerTeam = TEAM_A.obs;
   RxString batOrBowl = BAT.obs;
+  RxInt overs = 0.obs;
+
   RxBool isNoBall = false.obs;
   RxBool isWide = false.obs;
-  RxInt overs = 0.obs;
+
   RxInt noBallRun = 1.obs;
   RxInt wideRun = 1.obs;
+
   RxString bowler = "".obs;
   RxInt bowlerId = 012345.obs;
+
   RxString nonStrikerBatsman = "".obs;
   RxInt nonStrikerBatsmanId = 123456.obs;
+
   RxString strikerBatsman = "".obs;
   RxInt strikerBatsmanId = 123456.obs;
 
@@ -46,12 +51,6 @@ class CreateMatchController extends GetxController {
       final int matchId = Get.arguments['matchId'];
       matchIdOnline = matchId;
       loadScheduledMatch(matchId);
-    } else {
-      // This is a new match, behave as before
-      tournamentId = (Get.arguments as Map?)?["tournamentId"];
-      controllerWideRun.text = '0';
-      controllerNoBallRun.text = '0';
-      controllerOvers.text = '2';
     }
     tournamentId = (Get.arguments as Map?)?["tournamentId"];
 
@@ -66,10 +65,16 @@ class CreateMatchController extends GetxController {
       controllerOvers.text = match.overs.toString();
       controllerNoBallRun.text = match.noBallRun.toString();
       controllerWideRun.text = match.wideRun.toString();
+
+      //fetch values
       team1["teamId"] = match.team1?.toInt();
       team2["teamId"] = match.team2?.toInt();
-      team1["teamName"] = await _repo.getTeamName(match.team1 ?? -1);
-      team2["teamName"] = await _repo.getTeamName(match.team2 ?? -1);
+      team1["teamName"] = await _repo.scoreboardRepo.getTeamNameOnline(
+        match.team1 ?? -1,
+      );
+      team2["teamName"] = await _repo.scoreboardRepo.getTeamNameOnline(
+        match.team2 ?? -1,
+      );
       tournamentId = match.tournamentId;
     }
   }
@@ -173,7 +178,6 @@ class CreateMatchController extends GetxController {
       Get.snackbar(
         "Validation Error",
         validationError,
-
         backgroundColor: Colors.red,
         colorText: Colors.white,
         duration: const Duration(seconds: 4),
@@ -181,156 +185,115 @@ class CreateMatchController extends GetxController {
       return;
     }
 
+    // Clear any existing ScoreboardController instances to prevent conflicts
     try {
-      //todo: Clear all existing match data first
-      await _repo.deleteAllEntries();
-
-      // Clear any existing ScoreboardController instances to prevent conflicts
-      try {
-        Get.delete<ScoreboardController>();
-        log(
-          'Cleared existing ScoreboardController instances before creating new match',
-        );
-      } catch (e) {
-        log('No existing ScoreboardController instances to clear: $e');
-      }
-
-      CreateMatchModel data = CreateMatchModel(
-        matchIdOnline: matchIdOnline,
-        matchDate: DateTime.now(),
-        inningNo: 1,
-        overs: int.parse(controllerOvers.text),
-        noBallRun: int.parse(controllerNoBallRun.text),
-        wideRun: int.parse(controllerWideRun.text),
-        status: "scheduled",
-        tossWon:
-            tossWinnerTeam.value == team1['teamId']
-                ? team1['teamId']
-                : team2['teamId'],
-        team1: team1['teamId'],
-        team2: team2['teamId'],
-        currentBattingTeamId:
-            isBatsmanTeam(team1) ? team1['teamId'] : team2['teamId'],
-        strikerBatsmanId: strikerBatsmanId.value,
-        nonStrikerBatsmanId: nonStrikerBatsmanId.value,
-        bowlerId: bowlerId.value,
-        tournamentId: tournamentId,
-      );
-
-      // //diff online and offline +++++++++++++++++++++++++++++++++++++++++++++++
-      // data.strikerBatsmanId = batsmanList[0].teamPlayerId;
-      // data.nonStrikerBatsmanId = batsmanList[1].teamPlayerId;
-      // data.bowlerId = bowlerList[0].teamPlayerId;
-
-      AuthService service = AuthService();
-      TokenModel? tokenModel = service.fetchInfoFromToken();
-      if (tokenModel == null) {
-        throw Exception("userid is not found");
-      }
-      data.uid = tokenModel.uid ?? -1;
-
-      matchIdOnline = await _repo.createMatchOnline(data);
-      if (matchIdOnline == null) {
-        Get.snackbar("Match Is Not Created", "Please Try Again");
-      } else {
-        data.matchIdOnline = matchIdOnline;
-      }
-
-      if (tournamentId != null || isScheduled) {
-        Get.back();
-      } else {
-        Get.toNamed(NAV_TOSS_DECISION, arguments: {"matchId": matchIdOnline});
-
-        // _syncAllMatches();
-        // Get.snackbar(
-        //   "Match Started",
-        //   "Match between ${team1['teamName']} and ${team2['teamName']} has started!",
-        //
-        //   backgroundColor: Colors.green,
-        //   colorText: Colors.white,
-        //   duration: const Duration(seconds: 2),
-        // );
-      }
+      Get.delete<ScoreboardController>();
     } catch (e) {
-      Get.snackbar(
-        "Error",
-        "Failed to create match: ${e.toString()}",
+      log('No existing ScoreboardController instances to clear: $e');
+    }
 
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        duration: const Duration(seconds: 4),
-      );
+    CreateMatchModel data = CreateMatchModel(
+      matchIdOnline: matchIdOnline,
+      matchDate: DateTime.now(),
+      inningNo: 1,
+      overs: int.parse(controllerOvers.text),
+      noBallRun: int.parse(controllerNoBallRun.text),
+      wideRun: int.parse(controllerWideRun.text),
+      status: "scheduled",
+      tossWon:
+          tossWinnerTeam.value == team1['teamId']
+              ? team1['teamId']
+              : team2['teamId'],
+      team1: team1['teamId'],
+      team2: team2['teamId'],
+      currentBattingTeamId:
+          isBatsmanTeam(team1) ? team1['teamId'] : team2['teamId'],
+      strikerBatsmanId: strikerBatsmanId.value,
+      nonStrikerBatsmanId: nonStrikerBatsmanId.value,
+      bowlerId: bowlerId.value,
+      tournamentId: tournamentId,
+    );
+
+    // fetch uid
+    AuthService service = AuthService();
+    TokenModel? tokenModel = service.fetchInfoFromToken();
+    if (tokenModel == null) {
+      throw Exception("userid is not found");
+    }
+    data.uid = tokenModel.uid ?? -1;
+
+    // first it create match in database
+    matchIdOnline = await _repo.createMatchOnline(data);
+    if (matchIdOnline == null) {
+      Get.snackbar("Match Is Not Created", "Please Try Again");
+      return;
+    } else {
+      data.matchIdOnline = matchIdOnline;
+    }
+
+    if (tournamentId != null || isScheduled) {
+      Get.back();
+    } else {
+      Get.toNamed(NAV_TOSS_DECISION, arguments: {"matchId": matchIdOnline});
     }
   }
 
   startMatch() async {
-    try {
-      CreateMatchModel data = CreateMatchModel(
-        matchIdOnline: matchIdOnline,
-        matchDate: DateTime.now(),
-        inningNo: 1,
-        overs: int.parse(controllerOvers.text),
-        noBallRun: int.parse(controllerNoBallRun.text),
-        wideRun: int.parse(controllerWideRun.text),
-        status: "live",
-        tossWon:
-            tossWinnerTeam.value == team1['teamId']
-                ? team1['teamId']
-                : team2['teamId'],
-        team1: team1['teamId'],
-        team2: team2['teamId'],
-        currentBattingTeamId:
-            isBatsmanTeam(team1) ? team1['teamId'] : team2['teamId'],
-        strikerBatsmanId: strikerBatsmanId.value,
-        nonStrikerBatsmanId: nonStrikerBatsmanId.value,
-        bowlerId: bowlerId.value,
-        tournamentId: tournamentId,
-      );
-      data.strikerBatsmanId = batsmanList[0].teamPlayerId;
-      data.nonStrikerBatsmanId = batsmanList[1].teamPlayerId;
-      data.bowlerId = bowlerList[0].teamPlayerId;
-
-      AuthService service = AuthService();
-      TokenModel? tokenModel = service.fetchInfoFromToken();
-      if (tokenModel == null) {
-        throw Exception("userid is not found");
-      }
-
-      data.uid = tokenModel.uid ?? -1;
-      await _repo.updateMatchOnline(model: data);
-      await _selectTeamRepo.getAllTeams(wantToStore: true);
-      int? localMatchId = await _repo.createMatch(data);
-      log(localMatchId.toString());
-      Get.toNamed(NAV_SCOREBOARD, arguments: {"matchId": localMatchId});
-    } catch (e) {
-      log("heeeeeeeeeeeeee error at start match");
-    }
-  }
-
-  void _syncAllMatches() {
-    SyncFeature syncFeature = SyncFeature();
-    syncFeature.checkConnectivity(
-      () async => await syncFeature.syncAllMatches(),
+    CreateMatchModel data = CreateMatchModel(
+      matchIdOnline: matchIdOnline,
+      matchDate: DateTime.now(),
+      inningNo: 1,
+      overs: int.parse(controllerOvers.text),
+      noBallRun: int.parse(controllerNoBallRun.text),
+      wideRun: int.parse(controllerWideRun.text),
+      status: "live",
+      tossWon:
+          tossWinnerTeam.value == team1['teamId']
+              ? team1['teamId']
+              : team2['teamId'],
+      team1: team1['teamId'],
+      team2: team2['teamId'],
+      currentBattingTeamId:
+          isBatsmanTeam(team1) ? team1['teamId'] : team2['teamId'],
+      strikerBatsmanId: batsmanList[0].teamPlayerId,
+      nonStrikerBatsmanId: batsmanList[1].teamPlayerId,
+      bowlerId: bowlerList[0].teamPlayerId,
+      tournamentId: tournamentId,
+      uid: _repo.getUidOfUser(),
     );
+
+    //update a match in online
+    await _repo.updateMatchOnline(model: data);
+
+    // set up local database
+    await _selectTeamRepo.getAllTeams(wantToStore: true);
+    int? localMatchId = await _repo.createMatch(data);
+
+    Get.toNamed(NAV_SCOREBOARD, arguments: {"matchId": localMatchId});
   }
 
   Future<void> selectBatsman() async {
     // Validate teams are selected first
     if (team1.isEmpty || team2.isEmpty) {
+      Get.snackbar(
+        "Teams Required",
+        "Please select both teams before choosing players",
+
+        backgroundColor: Colors.orange,
+        colorText: Colors.white,
+      );
       return;
     }
 
     int battingTeamId =
         isBatsmanTeam(team1) ? team1['teamId'] : team2['teamId'];
-    // String battingTeamName =
-    //     isBatsmanTeam(team1) ? team1['teamName'] : team2['teamName'];
 
-    List<ChoosePlayerModel> batters = await Get.toNamed(
+    List<PlayerModel> batters = await Get.toNamed(
       NAV_CHOOSE_PLAYER,
       arguments: {"teamId": battingTeamId, "limit": 2},
     );
 
-    if (batters == null || batters.length < 2) {
+    if (batters.length < 2) {
       return;
     }
 
@@ -361,12 +324,12 @@ class CreateMatchController extends GetxController {
     String bowlingTeamName =
         isBatsmanTeam(team1) ? team2['teamName'] : team1['teamName'];
 
-    List<ChoosePlayerModel> bowlers = await Get.toNamed(
+    List<PlayerModel> bowlers = await Get.toNamed(
       NAV_CHOOSE_PLAYER,
       arguments: {"teamId": bowlingTeamId, "limit": 1},
     );
 
-    if (bowlers == null || bowlers.isEmpty) {
+    if (bowlers.isEmpty) {
       Get.snackbar(
         "Selection Required",
         "Please select 1 bowler from $bowlingTeamName to continue.",
@@ -382,13 +345,5 @@ class CreateMatchController extends GetxController {
 
     bowlerId.value = bowlers[0].teamPlayerId ?? 0;
     bowler.value = bowlers[0].playerName ?? "";
-
-    Get.snackbar(
-      "Bowler Selected",
-      "${bowlers[0].playerName} will bowl first",
-
-      backgroundColor: Colors.green,
-      colorText: Colors.white,
-    );
   }
 }

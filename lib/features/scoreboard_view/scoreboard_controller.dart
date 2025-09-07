@@ -12,6 +12,13 @@ class ScoreboardController extends ScoreboardBallActionManager {
     super.onInit();
 
     // resetControllerState();
+    calculateBatsman();
+    calculateCurrentOvers();
+    calculateOversState();
+    calculateBowler();
+    calculateCRR();
+    calculateRuns();
+    calculateWicket();
     initializeMatch(matchId);
   }
 
@@ -42,6 +49,7 @@ class ScoreboardController extends ScoreboardBallActionManager {
           await updateMatchStatus("resume");
           SyncFeature syncFeature = SyncFeature();
           syncFeature.syncMatchUpdate(matchId: matchId);
+          Get.back();
         },
         title: "Sure want to close",
         closeText: "cancel",

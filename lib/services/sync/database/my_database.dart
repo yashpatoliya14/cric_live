@@ -46,8 +46,7 @@ class MyDatabase {
               (
                 teamId INTEGER PRIMARY KEY,
                 teamName TEXT NOT NULL,
-                tournamentId INTEGER ,
-                teamLogo TEXT           
+                tournamentId INTEGER    
               )
           ''');
         await db.execute(''' 
@@ -55,7 +54,6 @@ class MyDatabase {
               (
                 teamPlayerId INTEGER PRIMARY KEY,
                 teamId INTEGER NOT NULL,
-                playerId INTEGER NOT NULL,
                 playerName TEXT NOT NULL,
                 
                 foreign key (teamId) references $TBL_TEAMS(teamId)           
@@ -95,10 +93,10 @@ class MyDatabase {
                   )
                 ''');
       },
-      version: 49,
+      version: 51,
 
       onUpgrade: (db, oldVersion, newVersion) async {
-        if (oldVersion < 49) {
+        if (oldVersion < 51) {
           await db.execute('''
             Drop table $TBL_BALL_BY_BALL 
             
@@ -142,8 +140,7 @@ class MyDatabase {
               (
                 teamId INTEGER PRIMARY KEY,
                 teamName TEXT NOT NULL,
-                tournamentId INTEGER ,
-                teamLogo TEXT           
+                tournamentId INTEGER    
               )
           ''');
           await db.execute(''' 
@@ -151,7 +148,6 @@ class MyDatabase {
               (
                 teamPlayerId INTEGER PRIMARY KEY,
                 teamId INTEGER NOT NULL,
-                playerId INTEGER NOT NULL,
                 playerName TEXT NOT NULL,
                 
                 foreign key (teamId) references $TBL_TEAMS(teamId)           
@@ -169,7 +165,7 @@ class MyDatabase {
                     team2 INTEGER NOT NULL,
                     matchDate datetime NOT NULL,
                     overs INTEGER NOT NULL,
-                    status TEXT NOT NULL CHECK(status IN ('live', 'completed', 'scheduled')),
+                    status TEXT NOT NULL,
                     tossWon INTEGER ,
                     decision TEXT DEFAULT 'remain',
                     tournamentId TEXT ,

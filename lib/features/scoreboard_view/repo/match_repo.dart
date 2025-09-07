@@ -15,7 +15,7 @@ mixin MatchRepo {
       return CreateMatchModel();
     }
 
-    return CreateMatchModel().fromMap(matchResult.first);
+    return CreateMatchModel.fromMap(matchResult.first);
   }
 
   /// find team name
@@ -34,12 +34,31 @@ mixin MatchRepo {
     }
   }
 
+  /// find team name online
+  Future<String?> getTeamNameOnline(int teamId) async {
+    ApiServices apiServices = ApiServices();
+    try {
+      Map<String, dynamic> data = await apiServices.get(
+        "/CL_Teams/GetTeamsById/$teamId",
+      );
+
+      return data["data"]["teamName"];
+    } catch (e) {
+      log("from team name from online ");
+      log(e.toString());
+      if (e.toString().contains("Server Error")) {
+        throw Exception("Server error");
+      }
+      return null;
+    }
+  }
+
   /// It takes teamPlayerId and gives a playerName.
   Future<String> getPlayerName(int id) async {
     try {
       Database db = await MyDatabase().database;
       List<Map<String, dynamic>> data = await db.rawQuery(
-        'SELECT * FROM ${TBL_TEAM_PLAYERS} WHERE teamPlayerId = ?',
+        'SELECT * FROM $TBL_TEAM_PLAYERS WHERE teamPlayerId = ?',
         [id],
       );
 
@@ -78,6 +97,9 @@ mixin MatchRepo {
   }
 
   Future<void> endMatch(matchId) async {
+    log(
+      "Icalled and my match id is $matchId :::::::::::::::::::::::::::::::::::::::::::hello here",
+    );
     CreateMatchModel model = CreateMatchModel(status: 'completed');
     updateMatch(model);
     log("$matchId");
@@ -85,17 +107,6 @@ mixin MatchRepo {
     syncFeature.checkConnectivity(
       () async => await syncFeature.syncMatchUpdate(matchId: matchId),
     );
-  }
-
-  Future<void> deleteAllEntries() async {
-    Database db = await MyDatabase().database;
-    try {
-      await db.delete(TBL_BALL_BY_BALL);
-      await db.delete(TBL_MATCHES);
-      log('All match data cleared successfully');
-    } catch (e) {
-      log('Error clearing match data from deleteAllEntries in match_repo: $e');
-    }
   }
 
   Future<List<PlayersModel>> getAllPlayersByTeam(int teamId) async {
@@ -114,13 +125,15 @@ mixin MatchRepo {
 
   Future<void> updateMatch(CreateMatchModel model) async {
     try {
-      log("match update status ::$model");
+      log("match update status ::${model.toMap()}");
       Database db = await MyDatabase().database;
-      await db.update(
-        TBL_MATCHES,
-        model.toMap(),
-        where: "id = ?",
-        whereArgs: [model.id],
+      await db.rawQuery(
+        '''
+        update $TBL_MATCHES
+        set status='completed'
+        where id = ?
+      ''',
+        [model.id],
       );
     } catch (e) {
       log("Error in update match locally");
