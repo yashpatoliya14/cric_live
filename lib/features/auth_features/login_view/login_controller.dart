@@ -32,7 +32,7 @@ class LoginController extends GetxController {
           password: passwordController.text,
         );
 
-        dynamic res = await authService.login(model);
+        await authService.login(model);
         Get.offAllNamed(NAV_DASHBOARD_PAGE);
       }
     } catch (e) {

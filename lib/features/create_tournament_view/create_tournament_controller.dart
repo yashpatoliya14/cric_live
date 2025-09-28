@@ -26,8 +26,12 @@ class CreateTournamentController extends GetxController {
   // Users and selection
   final RxList<UserModel> allUsers = <UserModel>[].obs;
   //search based
-  final RxList<UserModel> filteredUsers = <UserModel>[].obs;
+  final RxList<UserModel> searchedUsers = <UserModel>[].obs;
   final RxList<UserModel> selectedScorers = <UserModel>[].obs;
+  
+  // Search state
+  final RxBool isSearching = false.obs;
+  final RxString lastSearchQuery = ''.obs;
 
   // Teams
   final RxList<TeamModel> selectedTeams = <TeamModel>[].obs;
@@ -38,22 +42,27 @@ class CreateTournamentController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    log('CreateTournamentController onInit started');
     _initializeData();
     _setupListeners();
+    log('CreateTournamentController onInit completed');
   }
 
   Future<void> _initializeData() async {
-    await fetchAllUsers();
+    // Don't fetch users initially - only search when user types
+    log('Tournament creation initialized - users will be loaded on search');
+    
+    // Test user parsing with sample API data
+    testUserParsing();
   }
 
   void _setupListeners() {
-    // Listen to scorer search changes
-    scorerSearchController.addListener(_filterUsers);
-
     // Listen to form changes for validation
     nameController.addListener(_validateForm);
     locationController.addListener(_validateForm);
     formatController.addListener(_validateForm);
+    
+    // Note: Search is now triggered manually via search button, not on text changes
   }
 
   /// Fetch all users from API
@@ -64,7 +73,6 @@ class CreateTournamentController extends GetxController {
 
       List<UserModel> users = await _repo.getAllUsers();
       allUsers.assignAll(users);
-      filteredUsers.assignAll(users);
     } catch (e) {
       errorMessage.value = 'Failed to fetch users: ${e.toString()}';
       log('Error fetching users: $e');
@@ -73,33 +81,122 @@ class CreateTournamentController extends GetxController {
     }
   }
 
-  /// Filter users based on search text
-  void _filterUsers() {
-    String searchText = scorerSearchController.text.toLowerCase();
-    if (searchText.isEmpty) {
-      filteredUsers.assignAll(allUsers);
-    } else {
-      List<UserModel> filtered =
-          allUsers.where((user) {
-            String fullName = user.fullDisplayName.toLowerCase();
-            String userName = (user.userName ?? '').toLowerCase();
-            String email = (user.email ?? '').toLowerCase();
-
-            return fullName.contains(searchText) ||
-                userName.contains(searchText) ||
-                email.contains(searchText);
-          }).toList();
-
-      filteredUsers.assignAll(filtered);
+  /// Search users from API based on query
+  Future<void> searchUsers() async {
+    try {
+      String query = scorerSearchController.text.trim();
+      
+      // Don't search if query is empty
+      if (query.isEmpty) {
+        searchedUsers.clear();
+        Get.snackbar(
+          'Search Required',
+          'Please enter a search term',
+          backgroundColor: Colors.orange.shade100,
+          colorText: Colors.orange.shade800,
+        );
+        return;
+      }
+      
+      // Don't search if same as last search
+      if (query == lastSearchQuery.value) {
+        return;
+      }
+      
+      // Set loading state
+      isSearching.value = true;
+      errorMessage.value = '';
+      lastSearchQuery.value = query;
+      
+      List<UserModel> users = await _repo.searchUsers(query);
+      
+      // Update search results
+      searchedUsers.assignAll(users);
+      
+      if (users.isEmpty) {
+        Get.snackbar(
+          'No Results',
+          'No users found for "$query"',
+          backgroundColor: Colors.blue.shade100,
+          colorText: Colors.blue.shade800,
+        );
+      }
+      
+    } catch (e) {
+      errorMessage.value = 'Search failed: ${e.toString()}';
+      log('Error searching users: $e');
+      searchedUsers.clear();
+      
+      Get.snackbar(
+        'Search Error',
+        'Failed to search users. Please try again.',
+        backgroundColor: Colors.red.shade100,
+        colorText: Colors.red.shade800,
+      );
+    } finally {
+      isSearching.value = false;
     }
+  }
+  
+  /// Clear search results
+  void clearSearch() {
+    scorerSearchController.clear();
+    searchedUsers.clear();
+    lastSearchQuery.value = '';
+    errorMessage.value = '';
   }
 
   /// Add scorer to selected list
   void addScorer(UserModel user) {
-    if (!selectedScorers.any((scorer) => scorer.uid == user.uid)) {
+    if (!isUserSelected(user)) {
       selectedScorers.add(user);
-      scorerSearchController.clear();
       _validateForm();
+      
+      // Show success message
+      Get.snackbar(
+        'Scorer Added',
+        '${user.fullDisplayName} added as scorer',
+        backgroundColor: Colors.green.shade100,
+        colorText: Colors.green.shade800,
+        duration: Duration(seconds: 2),
+      );
+    }
+  }
+  
+  /// Check if user is already selected
+  bool isUserSelected(UserModel user) {
+    return selectedScorers.any((scorer) => scorer.uid == user.uid);
+  }
+  
+  /// Test method to validate user parsing with sample data
+  void testUserParsing() {
+    Map<String, dynamic> sampleUserData = {
+      "uid": 2,
+      "username": "yashpatoliya59",
+      "email": "yashpatoliya59@gmail.com",
+      "password": "",
+      "firstName": "yash",
+      "gender": "male",
+      "lastName": "patel",
+      "isVerified": 1,
+      "role": "user",
+      "profilePhoto": " "
+    };
+    
+    log('Testing user parsing with sample data: $sampleUserData');
+    
+    try {
+      UserModel testUser = UserModel.fromJson(sampleUserData);
+      log('Parsed user successfully:');
+      log('  - UID: ${testUser.uid}');
+      log('  - Username: ${testUser.userName}');
+      log('  - FirstName: ${testUser.firstName}');
+      log('  - LastName: ${testUser.lastName}');
+      log('  - Email: ${testUser.email}');
+      log('  - Display Name: ${testUser.displayName}');
+      log('  - Full Display Name: ${testUser.fullDisplayName}');
+    } catch (e) {
+      log('Error parsing test user: $e');
     }
   }
 
@@ -257,6 +354,7 @@ class CreateTournamentController extends GetxController {
       log(tournamentTeam.toJson().toString());
       await _repo.createTournamentTeam(tournamentTeam);
     }
+    Future.delayed(Duration(milliseconds: 2000));
   }
 
   /// Clear form after successful creation

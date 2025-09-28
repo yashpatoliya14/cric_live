@@ -3,9 +3,11 @@ import 'package:cric_live/utils/import_exports.dart';
 class CreateMatchView extends StatelessWidget {
   CreateMatchView({super.key});
 
+  // Make form key static to persist across rebuilds
+  static final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+
   @override
   Widget build(BuildContext context) {
-    GlobalKey<FormState> _formKey = GlobalKey();
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
@@ -17,60 +19,178 @@ class CreateMatchView extends StatelessWidget {
               top: false,
               child: Scaffold(
                 backgroundColor: colorScheme.surface,
-                appBar: _buildModernAppBar(context),
+                appBar: const CommonAppHeader(
+                  title: 'Create Match',
+                  subtitle: 'Set up a new cricket match',
+                  leadingIcon: Icons.sports_cricket,
+                ),
 
                 body: _buildBody(context, controller),
-                bottomNavigationBar: _buildActionButtons(context, controller),
+                bottomNavigationBar: _buildActionButtons(
+                  context,
+                  controller,
+                  _formKey,
+                ),
               ),
             ),
           ),
     );
   }
 
+  /// Comprehensive form validation function
+  bool _validateForm(
+    GlobalKey<FormState> formKey,
+    CreateMatchController controller,
+  ) {
+    // First validate the form fields (like overs input)
+    if (!formKey.currentState!.validate()) {
+      _showValidationError('Please fix the form errors above.');
+      return false;
+    }
+
+    // Then validate business logic
+    String? validationError = controller.validateMatchCreation();
+    if (validationError != null) {
+      _showValidationError(validationError);
+      return false;
+    }
+
+    return true;
+  }
+
+  /// Show validation error with consistent styling
+  void _showValidationError(String message) {
+    Get.snackbar(
+      '⚠️ Validation Error',
+      message,
+      backgroundColor: Colors.red.shade50,
+      colorText: Colors.red.shade800,
+      borderColor: Colors.red.shade300,
+      borderWidth: 1,
+      snackPosition: SnackPosition.TOP,
+      duration: const Duration(seconds: 4),
+      margin: const EdgeInsets.all(16),
+      borderRadius: 12,
+      icon: Icon(Icons.error_outline, color: Colors.red.shade600),
+    );
+  }
+
   Widget _buildActionButtons(
     BuildContext context,
     CreateMatchController controller,
+    GlobalKey<FormState> formKey,
   ) {
+    // Check if basic setup is complete for enabling buttons
+    final bool basicSetupComplete =
+        controller.team1.isNotEmpty &&
+        controller.team2.isNotEmpty &&
+        controller.controllerOvers.text.isNotEmpty &&
+        controller.team1['teamId'] != controller.team2['teamId'];
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
       child: Row(
         children: [
           // Button 1: Schedule Match
           Expanded(
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.grey),
-              onPressed: () {
-                // Add logic to save the match as "scheduled"
-                controller.onCreateMatch(isScheduled: true);
-              },
-              child: Text("Schedule Match"),
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor:
+                    basicSetupComplete
+                        ? Colors.grey.shade600
+                        : Colors.grey.shade400,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: basicSetupComplete ? 2 : 0,
+              ),
+              onPressed:
+                  basicSetupComplete
+                      ? () {
+                        if (_validateForm(formKey, controller)) {
+                          controller.onCreateMatch(isScheduled: true);
+                        }
+                      }
+                      : null,
+              icon: const Icon(Icons.schedule, size: 20),
+              label:
+                  !controller.isScheduledMatch.value
+                      ? Text(
+                        controller.isSchedulingDateTimeValid 
+                            ? "Schedule Match" 
+                            : "Schedule Match (Select Date & Time)",
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                        textAlign: TextAlign.center,
+                      )
+                      : const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.white,
+                          ),
+                        ),
+                      ),
             ),
           ),
           const SizedBox(width: 16),
           // Button 2: Proceed to Toss
           Expanded(
-            child: ElevatedButton(
-              onPressed: () {
-                controller.onCreateMatch(isScheduled: false);
-              },
-              child: Text("Proceed to Toss"),
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor:
+                    basicSetupComplete
+                        ? Theme.of(context).primaryColor
+                        : Theme.of(context).disabledColor,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: basicSetupComplete ? 3 : 0,
+              ),
+              onPressed:
+                  basicSetupComplete
+                      ? () {
+                        if (_validateForm(formKey, controller)) {
+                          controller.onCreateMatch(isScheduled: false);
+                        }
+                      }
+                      : null,
+              icon: const Icon(Icons.sports_cricket, size: 20),
+              label:
+                  !controller.isCreatingMatch.value
+                      ? const Text(
+                        "Proceed to Toss",
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      )
+                      : const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.white,
+                          ),
+                        ),
+                      ),
             ),
           ),
         ],
       ),
-    );
-  }
-
-  PreferredSizeWidget _buildModernAppBar(BuildContext context) {
-    return AppBar(
-      title: Text(
-        APPBAR_CREATE_MATCH,
-        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 20),
-      ),
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      elevation: 0,
-      scrolledUnderElevation: 1,
-      centerTitle: true,
     );
   }
 
@@ -98,17 +218,34 @@ class CreateMatchView extends StatelessWidget {
             // Team Selection Section
             _buildTeamSelectionSection(context, controller),
             const SizedBox(height: 24),
-            // Toss and Decision Section
-            // _buildTossDecisionSection(context, controller),
-            const SizedBox(height: 24),
             // Match Settings Section
             _buildMatchSettingsSection(context, controller),
             const SizedBox(height: 24),
+            // Date/Time Selection Section (shown when scheduling or toggled)
+            Obx(() {
+              if (controller.isDateTimeRequired.value) {
+                // For scheduled matches - date/time is REQUIRED
+                return Column(
+                  children: [
+                    _buildRequiredDateTimeSection(context, controller),
+                    const SizedBox(height: 24),
+                  ],
+                );
+              } else if (controller.showDateTimeSelection.value) {
+                // For immediate matches - date/time is optional
+                return Column(
+                  children: [
+                    _buildDateTimeSelectionSection(context, controller),
+                    const SizedBox(height: 24),
+                  ],
+                );
+              } else {
+                // Show toggle to add optional date/time
+                return _buildDateTimeToggleSection(context, controller);
+              }
+            }),
             // Overs Section
             _buildOversSection(context, controller),
-            const SizedBox(height: 24),
-            // Player Selection Section
-            // _buildPlayerSelectionSection(context, controller),
             const SizedBox(height: 24),
             // Match Preview Section
             _buildMatchPreviewSection(context, controller),
@@ -119,50 +256,11 @@ class CreateMatchView extends StatelessWidget {
     );
   }
 
-  // In the _buildFloatingActionButton method
-
-  Widget _buildFloatingActionButton(
-    BuildContext context,
-    CreateMatchController controller,
-  ) {
-    final theme = Theme.of(context);
-    // You can adjust this logic based on what's needed before the toss
-    final isReadyForToss =
-        controller.team1.isNotEmpty &&
-        controller.team2.isNotEmpty &&
-        controller.controllerOvers.text.isNotEmpty;
-
-    return FloatingActionButton.extended(
-      // The onPressed function is the key change here
-      onPressed:
-          isReadyForToss
-              ? () {
-                // Run validation before navigating
-                String? validationError = controller.validatePreTossSettings();
-                if (validationError != null) {
-                  Get.snackbar("Validation Error", validationError /* ... */);
-                  return;
-                }
-                // Navigate to the new Toss Decision page
-                Get.toNamed(NAV_TOSS_DECISION);
-              }
-              : null,
-      backgroundColor:
-          isReadyForToss ? theme.colorScheme.primary : theme.disabledColor,
-      // ... other properties
-      label: Text(
-        isReadyForToss ? "Proceed to Toss" : "Complete Setup", // Changed text
-        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-      ),
-    );
-  }
-
   bool _isMatchReady(CreateMatchController controller) {
     return controller.team1.isNotEmpty &&
         controller.team2.isNotEmpty &&
         controller.controllerOvers.text.isNotEmpty &&
-        controller.batsmanList.length == 2 &&
-        controller.bowlerList.isNotEmpty;
+        controller.team1['teamId'] != controller.team2['teamId'];
   }
 
   Widget _buildHeaderCard(BuildContext context) {
@@ -200,7 +298,7 @@ class CreateMatchView extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Set up teams, toss, and match settings',
+              'Set up teams and match settings',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onPrimaryContainer.withOpacity(0.8),
               ),
@@ -215,6 +313,15 @@ class CreateMatchView extends StatelessWidget {
     BuildContext context,
     CreateMatchController controller,
   ) {
+    final bool teamsValid =
+        controller.team1.isNotEmpty &&
+        controller.team2.isNotEmpty &&
+        controller.team1['teamId'] != controller.team2['teamId'];
+    final bool showError =
+        controller.team1.isNotEmpty &&
+        controller.team2.isNotEmpty &&
+        controller.team1['teamId'] == controller.team2['teamId'];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -277,6 +384,66 @@ class CreateMatchView extends StatelessWidget {
             ),
           ],
         ),
+        // Error message for same team selection
+        if (showError) ...[
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.red.shade50,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.red.shade300),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.red.shade600, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Please select different teams. Both teams cannot be the same.',
+                    style: TextStyle(
+                      color: Colors.red.shade800,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+        // Success message for valid team selection
+        if (teamsValid) ...[
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.green.shade50,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.green.shade300),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.check_circle_outline,
+                  color: Colors.green.shade600,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Teams selected: ${controller.team1['teamName']} vs ${controller.team2['teamName']}',
+                    style: TextStyle(
+                      color: Colors.green.shade800,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -355,51 +522,6 @@ class CreateMatchView extends StatelessWidget {
     );
   }
 
-  Widget _buildTossDecisionSection(
-    BuildContext context,
-    CreateMatchController controller,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionHeader(
-          context,
-          '2. Toss & Decision',
-          Icons.casino_rounded,
-        ),
-        const SizedBox(height: 16),
-
-        // Toss Winner Selection
-        _buildModernSelectionCard(
-          context: context,
-          title: 'Toss Winner',
-          child: _buildModernRadioGroup(
-            context: context,
-            title1: controller.team1['teamName'] ?? TEAM_A,
-            title2: controller.team2['teamName'] ?? TEAM_B,
-            currentValue: controller.tossWinnerTeam.value,
-            onChanged: controller.onTossWinnerTeamChanged,
-          ),
-        ),
-
-        const SizedBox(height: 12),
-
-        // Bat or Bowl Decision
-        _buildModernSelectionCard(
-          context: context,
-          title: 'Choose to Bat or Bowl',
-          child: _buildModernRadioGroup(
-            context: context,
-            title1: BAT,
-            title2: BOWL,
-            currentValue: controller.batOrBowl.value,
-            onChanged: controller.onbatOrBowlChanged,
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildMatchSettingsSection(
     BuildContext context,
     CreateMatchController controller,
@@ -409,7 +531,7 @@ class CreateMatchView extends StatelessWidget {
       children: [
         _buildSectionHeader(
           context,
-          '3. Match Settings',
+          '2. Match Settings',
           Icons.settings_rounded,
         ),
         const SizedBox(height: 16),
@@ -452,7 +574,11 @@ class CreateMatchView extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader(context, '4. Match Format', Icons.timer_rounded),
+        Obx(() => _buildSectionHeader(
+          context, 
+          (controller.isDateTimeRequired.value || controller.showDateTimeSelection.value) ? '4. Match Format' : '3. Match Format', 
+          Icons.timer_rounded
+        )),
         const SizedBox(height: 16),
 
         _buildModernSelectionCard(
@@ -462,11 +588,30 @@ class CreateMatchView extends StatelessWidget {
             controller: controller.controllerOvers,
             keyboardType: TextInputType.number,
             decoration: InputDecoration(
-              labelText: 'Enter overs (1-100)',
-              hintText: 'e.g., 20',
-              prefixIcon: Icon(Icons.sports_cricket_rounded),
+              labelText: 'Enter overs (1-50)',
+              hintText: 'e.g., 20 for T20, 50 for ODI',
+              helperText: 'Number of overs per team',
+              prefixIcon: const Icon(Icons.sports_cricket_rounded),
+              suffixText: 'overs',
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(
+                  color: Theme.of(context).colorScheme.outline.withOpacity(0.5),
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(
+                  color: Theme.of(context).colorScheme.primary,
+                  width: 2,
+                ),
+              ),
+              errorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Colors.red, width: 2),
               ),
               filled: true,
               fillColor: Theme.of(
@@ -478,56 +623,19 @@ class CreateMatchView extends StatelessWidget {
                 return 'Please enter number of overs';
               }
               int? overs = int.tryParse(value);
-              if (overs == null || overs <= 0 || overs > 50) {
-                return 'Please enter a valid number (1-50)';
+              if (overs == null || overs <= 0) {
+                return 'Overs must be a positive number';
+              }
+              if (overs > 50) {
+                return 'Maximum 50 overs allowed';
               }
               return null;
             },
             inputFormatters: [
               FilteringTextInputFormatter.allow(RegExp(r'^\d{0,2}$')),
             ],
+            autovalidateMode: AutovalidateMode.onUserInteraction,
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPlayerSelectionSection(
-    BuildContext context,
-    CreateMatchController controller,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionHeader(context, '5. Select Players', Icons.people_rounded),
-        const SizedBox(height: 16),
-
-        _buildEnhancedPlayerSelector(
-          context: context,
-          label: 'Opening Batsmen',
-          subtitle: 'Select 2 batsmen to start the innings',
-          playerNames:
-              controller.batsmanList.isNotEmpty
-                  ? '${controller.batsmanList[0].playerName ?? ""} & ${controller.batsmanList.length > 1 ? controller.batsmanList[1].playerName ?? "" : "Select 2nd"}'
-                  : null,
-          icon: Icons.sports_cricket_rounded,
-          isSelected: controller.batsmanList.length == 2,
-          onTap: () => controller.selectBatsman(),
-        ),
-
-        const SizedBox(height: 12),
-
-        _buildEnhancedPlayerSelector(
-          context: context,
-          label: 'Opening Bowler',
-          subtitle: 'Select 1 bowler to start the bowling',
-          playerNames:
-              controller.bowler.value.isNotEmpty
-                  ? controller.bowler.value
-                  : null,
-          icon: Icons.sports_baseball_rounded,
-          isSelected: controller.bowlerList.isNotEmpty,
-          onTap: () => controller.selectBowler(),
         ),
       ],
     );
@@ -542,7 +650,11 @@ class CreateMatchView extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader(context, '6. Match Summary', Icons.preview_rounded),
+        Obx(() => _buildSectionHeader(
+          context, 
+          (controller.isDateTimeRequired.value || controller.showDateTimeSelection.value) ? '5. Match Summary' : '4. Match Summary', 
+          Icons.preview_rounded
+        )),
         const SizedBox(height: 16),
 
         Card(
@@ -585,18 +697,20 @@ class CreateMatchView extends StatelessWidget {
                   controller.team1.isNotEmpty && controller.team2.isNotEmpty,
                 ),
                 _buildProgressItem(
-                  'Toss & Decision',
-                  controller.tossWinnerTeam.value.isNotEmpty,
+                  'Match Settings Configured',
+                  true, // Match settings are always available
                 ),
                 _buildProgressItem(
-                  'Match Format',
+                  'Match Format Set',
                   controller.controllerOvers.text.isNotEmpty,
                 ),
-                _buildProgressItem(
-                  'Players Selected',
-                  controller.batsmanList.length == 2 &&
-                      controller.bowlerList.isNotEmpty,
-                ),
+                // Show date/time progress for scheduled matches or when optional selection is shown
+                Obx(() => (controller.isDateTimeRequired.value || controller.showDateTimeSelection.value)
+                    ? _buildProgressItem(
+                        'Date & Time Selected',
+                        controller.selectedMatchDate.value != null && controller.selectedMatchTime.value != null,
+                      )
+                    : const SizedBox.shrink()),
 
                 if (isComplete) ...[
                   const SizedBox(height: 16),
@@ -625,9 +739,24 @@ class CreateMatchView extends StatelessWidget {
                         Text(
                           '${controller.team1['teamName'] ?? ''} vs ${controller.team2['teamName'] ?? ''}',
                         ),
-                        Text('${controller.controllerOvers.text} overs match'),
                         Text(
-                          'Toss: ${controller.tossWinnerTeam.value} chose to ${controller.batOrBowl.value.toLowerCase()}',
+                          '${controller.controllerOvers.text} overs per team',
+                        ),
+                        // Show scheduled date/time if applicable
+                        Obx(() => (controller.isDateTimeRequired.value || controller.showDateTimeSelection.value) && 
+                               controller.scheduledDateTime != null
+                            ? Text(
+                                'Scheduled: ${DateFormat('MMM dd, yyyy \'at\' h:mm a').format(controller.scheduledDateTime!)}',
+                                style: TextStyle(
+                                  color: Colors.blue.shade700,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              )
+                            : const SizedBox.shrink()),
+                        Text(
+                          controller.isDateTimeRequired.value 
+                              ? 'Ready to schedule match' 
+                              : 'Ready for toss and player selection',
                         ),
                       ],
                     ),
@@ -639,46 +768,6 @@ class CreateMatchView extends StatelessWidget {
         ),
       ],
     );
-  }
-
-  Widget _buildStepProgress(
-    BuildContext context,
-    CreateMatchController controller,
-  ) {
-    int currentStep = _getCurrentStep(controller);
-
-    return Card(
-      elevation: 1,
-      margin: EdgeInsets.zero,
-      child: StepProgressIndicator(currentStep: currentStep, totalSteps: 6),
-    );
-  }
-
-  int _getCurrentStep(CreateMatchController controller) {
-    // Step 1: Teams selected
-    if (controller.team1.isEmpty || controller.team2.isEmpty) {
-      return 1;
-    }
-
-    // Step 2: Toss and decision
-    if (controller.tossWinnerTeam.value.isEmpty ||
-        controller.batOrBowl.value.isEmpty) {
-      return 2;
-    }
-
-    // Step 3: Match settings (optional, so we can skip to step 4)
-    // Step 4: Overs configured
-    if (controller.controllerOvers.text.isEmpty) {
-      return 4;
-    }
-
-    // Step 5: Players selected
-    if (controller.batsmanList.length < 2 || controller.bowlerList.isEmpty) {
-      return 5;
-    }
-
-    // Step 6: Ready to start
-    return 6;
   }
 
   Widget _buildSectionHeader(
@@ -734,94 +823,6 @@ class CreateMatchView extends StatelessWidget {
             child,
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildModernRadioGroup({
-    required BuildContext context,
-    required String title1,
-    required String title2,
-    required String currentValue,
-    required Function onChanged,
-  }) {
-    final theme = Theme.of(context);
-
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _buildEnhancedRadioOption(
-              context: context,
-              title: title1,
-              value: title1,
-              groupValue: currentValue,
-              onChanged: onChanged,
-              icon: _getRadioIcon(title1),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: _buildEnhancedRadioOption(
-              context: context,
-              title: title2,
-              value: title2,
-              groupValue: currentValue,
-              onChanged: onChanged,
-              icon: _getRadioIcon(title2),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRadioOption({
-    required BuildContext context,
-    required String title,
-    required String value,
-    required String groupValue,
-    required Function onChanged,
-  }) {
-    final isSelected = value == groupValue;
-    final theme = Theme.of(context);
-
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      decoration: BoxDecoration(
-        color:
-            isSelected
-                ? theme.colorScheme.primaryContainer
-                : theme.colorScheme.surfaceVariant.withOpacity(0.3),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color:
-              isSelected
-                  ? theme.colorScheme.primary
-                  : theme.colorScheme.outline.withOpacity(0.5),
-          width: isSelected ? 2 : 1,
-        ),
-      ),
-      child: RadioListTile<String>(
-        value: value,
-        groupValue: groupValue,
-        onChanged: (val) => onChanged(val),
-        title: Text(
-          title,
-          style: TextStyle(
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-            color:
-                isSelected
-                    ? theme.colorScheme.onPrimaryContainer
-                    : theme.colorScheme.onSurface,
-          ),
-        ),
-        activeColor: theme.colorScheme.primary,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 8),
       ),
     );
   }
@@ -905,99 +906,23 @@ class CreateMatchView extends StatelessWidget {
                   ),
                   isDense: true,
                 ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Required';
+                  }
+                  int? runs = int.tryParse(value);
+                  if (runs == null || runs < 0 || runs > 6) {
+                    return '0-6 only';
+                  }
+                  return null;
+                },
                 inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'^[0-9]{1}$')),
+                  FilteringTextInputFormatter.allow(RegExp(r'^[0-6]$')),
                 ],
               ),
             ),
           ],
         ],
-      ),
-    );
-  }
-
-  Widget _buildEnhancedPlayerSelector({
-    required BuildContext context,
-    required String label,
-    required String subtitle,
-    required String? playerNames,
-    required IconData icon,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    final theme = Theme.of(context);
-
-    return Card(
-      elevation: isSelected ? 3 : 1,
-      margin: EdgeInsets.zero,
-      color:
-          isSelected
-              ? theme.colorScheme.primaryContainer.withOpacity(0.5)
-              : null,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color:
-                      isSelected
-                          ? theme.colorScheme.primary
-                          : theme.colorScheme.surfaceVariant,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  isSelected ? Icons.check_rounded : icon,
-                  color:
-                      isSelected
-                          ? theme.colorScheme.onPrimary
-                          : theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      label,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color:
-                            isSelected
-                                ? theme.colorScheme.onPrimaryContainer
-                                : theme.colorScheme.onSurface,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      playerNames ?? subtitle,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color:
-                            isSelected
-                                ? theme.colorScheme.onPrimaryContainer
-                                    .withOpacity(0.8)
-                                : theme.colorScheme.onSurfaceVariant,
-                        fontStyle:
-                            playerNames != null
-                                ? FontStyle.normal
-                                : FontStyle.italic,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Icon(
-                Icons.chevron_right_rounded,
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -1124,6 +1049,397 @@ class CreateMatchView extends StatelessWidget {
       return Icons.groups_rounded;
     }
     return null; // No icon for generic options
+  }
+
+  Widget _buildDateTimeToggleSection(
+    BuildContext context,
+    CreateMatchController controller,
+  ) {
+    return Column(
+      children: [
+        Card(
+          elevation: 1,
+          margin: EdgeInsets.zero,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: controller.toggleDateTimeSelection,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.schedule_rounded,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Schedule Match (Optional)',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Set a specific date and time for your match',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    Icons.expand_more_rounded,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+      ],
+    );
+  }
+
+  Widget _buildRequiredDateTimeSection(
+    BuildContext context,
+    CreateMatchController controller,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader(
+          context,
+          '3. Schedule Match (Required)',
+          Icons.schedule_rounded,
+        ),
+        const SizedBox(height: 8),
+        // Required notice
+        Container(
+          padding: const EdgeInsets.all(12),
+          margin: const EdgeInsets.only(bottom: 16),
+          decoration: BoxDecoration(
+            color: Colors.blue.shade50,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.blue.shade300),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.info_outline,
+                color: Colors.blue.shade600,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Date and time selection is required for scheduled matches',
+                  style: TextStyle(
+                    color: Colors.blue.shade800,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        
+        _buildModernSelectionCard(
+          context: context,
+          title: 'Select Date & Time *',
+          child: Column(
+            children: [
+              // Date Selection
+              Row(
+                children: [
+                  Expanded(
+                    child: Obx(() => _buildDateTimeSelector(
+                      context: context,
+                      title: 'Match Date *',
+                      icon: Icons.calendar_today_rounded,
+                      value: controller.selectedMatchDate.value != null
+                          ? DateFormat('EEE, MMM dd, yyyy')
+                              .format(controller.selectedMatchDate.value!)
+                          : 'Required - Select Date',
+                      isSelected: controller.selectedMatchDate.value != null,
+                      onTap: controller.selectMatchDate,
+                      isRequired: true,
+                    )),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Obx(() => _buildDateTimeSelector(
+                      context: context,
+                      title: 'Match Time *',
+                      icon: Icons.access_time_rounded,
+                      value: controller.selectedMatchTime.value != null
+                          ? controller.selectedMatchTime.value!.format(context)
+                          : 'Required - Select Time',
+                      isSelected: controller.selectedMatchTime.value != null,
+                      onTap: controller.selectMatchTime,
+                      isRequired: true,
+                    )),
+                  ),
+                ],
+              ),
+              
+              // Selected DateTime Preview
+              Obx(() {
+                if (controller.scheduledDateTime != null) {
+                  return Container(
+                    margin: const EdgeInsets.only(top: 16),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.green.shade300),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.check_circle_outline,
+                          color: Colors.green.shade600,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Match Scheduled for:',
+                                style: TextStyle(
+                                  color: Colors.green.shade800,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              Text(
+                                DateFormat('EEEE, MMMM dd, yyyy \'at\' h:mm a')
+                                    .format(controller.scheduledDateTime!),
+                                style: TextStyle(
+                                  color: Colors.green.shade800,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+                return const SizedBox.shrink();
+              }),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDateTimeSelectionSection(
+    BuildContext context,
+    CreateMatchController controller,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: _buildSectionHeader(
+                context,
+                '3. Schedule Match (Optional)',
+                Icons.schedule_rounded,
+              ),
+            ),
+            IconButton(
+              onPressed: controller.clearDateTimeSelection,
+              icon: Icon(
+                Icons.close_rounded,
+                color: Theme.of(context).colorScheme.error,
+              ),
+              tooltip: 'Remove scheduling',
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        
+        _buildModernSelectionCard(
+          context: context,
+          title: 'Select Date & Time',
+          child: Column(
+            children: [
+              // Date Selection
+              Row(
+                children: [
+                  Expanded(
+                    child: Obx(() => _buildDateTimeSelector(
+                      context: context,
+                      title: 'Match Date',
+                      icon: Icons.calendar_today_rounded,
+                      value: controller.selectedMatchDate.value != null
+                          ? DateFormat('EEE, MMM dd, yyyy')
+                              .format(controller.selectedMatchDate.value!)
+                          : 'Select Date',
+                      isSelected: controller.selectedMatchDate.value != null,
+                      onTap: controller.selectMatchDate,
+                    )),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Obx(() => _buildDateTimeSelector(
+                      context: context,
+                      title: 'Match Time',
+                      icon: Icons.access_time_rounded,
+                      value: controller.selectedMatchTime.value != null
+                          ? controller.selectedMatchTime.value!.format(context)
+                          : 'Select Time',
+                      isSelected: controller.selectedMatchTime.value != null,
+                      onTap: controller.selectMatchTime,
+                    )),
+                  ),
+                ],
+              ),
+              
+              // Selected DateTime Preview
+              Obx(() {
+                if (controller.scheduledDateTime != null) {
+                  return Container(
+                    margin: const EdgeInsets.only(top: 16),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.green.shade300),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.check_circle_outline,
+                          color: Colors.green.shade600,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Match Scheduled for:',
+                                style: TextStyle(
+                                  color: Colors.green.shade800,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              Text(
+                                DateFormat('EEEE, MMMM dd, yyyy \'at\' h:mm a')
+                                    .format(controller.scheduledDateTime!),
+                                style: TextStyle(
+                                  color: Colors.green.shade800,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+                return const SizedBox.shrink();
+              }),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDateTimeSelector({
+    required BuildContext context,
+    required String title,
+    required IconData icon,
+    required String value,
+    required bool isSelected,
+    required VoidCallback onTap,
+    bool isRequired = false,
+  }) {
+    final theme = Theme.of(context);
+    
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? theme.colorScheme.primaryContainer.withOpacity(0.3)
+              : isRequired && !isSelected
+                  ? Colors.red.shade50.withOpacity(0.5)
+                  : theme.colorScheme.surfaceVariant.withOpacity(0.3),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected
+                ? theme.colorScheme.primary.withOpacity(0.5)
+                : isRequired && !isSelected
+                    ? Colors.red.shade400
+                    : theme.colorScheme.outline.withOpacity(0.3),
+            width: isSelected || (isRequired && !isSelected) ? 2 : 1,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  icon,
+                  color: isSelected
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.onSurfaceVariant,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  title,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: isSelected
+                        ? theme.colorScheme.primary
+                        : isRequired && !isSelected
+                            ? Colors.red.shade700
+                            : theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              value,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w500,
+                color: isSelected
+                    ? theme.colorScheme.onPrimaryContainer
+                    : isRequired && !isSelected
+                        ? Colors.red.shade700
+                        : theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildProgressItem(String title, bool isCompleted) {

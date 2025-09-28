@@ -95,16 +95,29 @@ class BallDetailModel {
       batsmanId: json['batsmanId'] as int?,
       batsmanName: json['batsmanName'] as String?,
       runs: json['runs'] as int?,
-      isWide: json['isWide'] as bool?,
-      isNoBall: json['isNoBall'] as bool?,
-      isBye: json['isBye'] as bool?,
-      isLegBye: json['isLegBye'] as bool?,
-      isWicket: json['isWicket'] as bool?,
+      isWide: _toBool(json['isWide']),
+      isNoBall: _toBool(json['isNoBall']),
+      isBye: _toBool(json['isBye']),
+      isLegBye: _toBool(json['isLegBye']),
+      isWicket: _toBool(json['isWicket']),
       wicketType: json['wicketType'] as String?,
       wicketPlayerId: json['wicketPlayerId'] as int?,
       wicketPlayerName: json['wicketPlayerName'] as String?,
       ballResult: json['ballResult'] as String?,
     );
+  }
+
+  // Helper method to safely convert various types to bool?
+  static bool? _toBool(dynamic value) {
+    if (value == null) return null;
+    if (value is bool) return value;
+    if (value is int) return value == 1;
+    if (value is String) {
+      final lower = value.toLowerCase();
+      if (lower == 'true' || lower == '1') return true;
+      if (lower == 'false' || lower == '0') return false;
+    }
+    return null;
   }
 
   // Convert to database/API format

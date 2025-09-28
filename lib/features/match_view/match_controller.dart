@@ -15,10 +15,6 @@ class MatchController extends GetxController {
     // TODO: implement onInit
     super.onInit();
     _initializeData();
-
-    if (isLive != null && isLive == true) {
-      pollingService.startPolling(fn: () => refreshMatchData(), seconds: 10);
-    }
   }
 
   void _initializeData() {
@@ -29,6 +25,11 @@ class MatchController extends GetxController {
       currentMatchId.value = arguments['matchId'] as int;
       isLive = arguments['isLive'] as bool?;
       loadMatchResult(currentMatchId.value);
+      
+      // Start polling for live matches
+      if (isLive != null && isLive == true) {
+        pollingService.startPolling(fn: () => silentRefreshMatchData(), seconds: 10);
+      }
     } else {
       errorMessage.value = 'No match selected';
       isLoading.value = false;
@@ -51,12 +52,12 @@ class MatchController extends GetxController {
   final Rx<CompleteMatchResultModel?> matchResult =
       Rx<CompleteMatchResultModel?>(null);
   final RxInt currentMatchId = 0.obs;
+  final RxBool isLiveMatch = false.obs; // Reactive live status
+  final RxBool isSilentRefreshing = false.obs; // Silent refresh indicator
 
   // Getters for easy access
   TeamInningsResultModel? get team1Innings => matchResult.value?.team1Innings;
   TeamInningsResultModel? get team2Innings => matchResult.value?.team2Innings;
-  List<OverSummaryModel> get team1Overs => matchResult.value?.team1Overs ?? [];
-  List<OverSummaryModel> get team2Overs => matchResult.value?.team2Overs ?? [];
   String get matchTitle => matchResult.value?.matchTitle ?? 'Match Result';
   String get resultSummary => matchResult.value?.matchSummary ?? '';
 
@@ -177,15 +178,17 @@ class MatchController extends GetxController {
     return {
       'Total Runs': (matchResult.value!.totalRuns ?? 0).toString(),
       'Total Wickets': (matchResult.value!.totalWickets ?? 0).toString(),
-      'Total Boundaries':
-          matchResult.value!.calculatedTotalBoundaries.toString(),
-      'Total Sixes': (matchResult.value!.totalSixes ?? 0).toString(),
-      'Highest Individual Score':
-          matchResult.value!.highestIndividualScore.toString(),
-      'Highest Team Score': matchResult.value!.highestTeamScore.toString(),
+      'Total Boundaries': matchResult.value!.calculatedMatchBoundaries.toString(),
+      'Total Sixes': matchResult.value!.calculatedMatchSixes.toString(),
+      'Highest Individual Score': matchResult.value!.calculatedHighestIndividualScore.toString(),
+      'Highest Team Score': matchResult.value!.calculatedHighestTeamScore.toString(),
       'Match Type': matchResult.value!.formatDisplay,
       if (matchResult.value!.location != null)
-        'location': matchResult.value!.location!,
+        'Venue': matchResult.value!.location!,
+      if (matchResult.value!.isLive)
+        'Status': 'Live Match',
+      if (matchResult.value!.currentOverDisplay != null)
+        'Current Over': matchResult.value!.currentOverDisplay!,
     };
   }
 
@@ -251,10 +254,10 @@ class MatchController extends GetxController {
     return {
       'totalRuns': matchResult.value!.totalRuns ?? 0,
       'totalWickets': matchResult.value!.totalWickets ?? 0,
-      'totalBoundaries': matchResult.value!.calculatedTotalBoundaries,
-      'totalSixes': matchResult.value!.totalSixes ?? 0,
-      'highestScore': matchResult.value!.highestIndividualScore,
-      'highestTeamScore': matchResult.value!.highestTeamScore,
+      'totalBoundaries': matchResult.value!.calculatedMatchBoundaries,
+      'totalSixes': matchResult.value!.calculatedMatchSixes,
+      'highestScore': matchResult.value!.calculatedHighestIndividualScore,
+      'highestTeamScore': matchResult.value!.calculatedHighestTeamScore,
     };
   }
 
@@ -274,6 +277,9 @@ class MatchController extends GetxController {
       if (result != null) {
         matchResult.value = result;
         matchResult.refresh();
+        
+        // Update reactive live status
+        isLiveMatch.value = result.status?.toLowerCase() == 'live';
       } else {
         errorMessage.value = 'Failed to load match result';
       }
@@ -287,10 +293,44 @@ class MatchController extends GetxController {
     }
   }
 
-  /// Refresh match data
+  /// Refresh match data (with loading indicator)
   Future<void> refreshMatchData() async {
     if (currentMatchId.value > 0) {
       await loadMatchResult(currentMatchId.value);
+    }
+  }
+
+  /// Silent refresh match data (background update without loader)
+  Future<void> silentRefreshMatchData() async {
+    if (currentMatchId.value > 0) {
+      try {
+        // Show subtle refresh indicator
+        isSilentRefreshing.value = true;
+        
+        // Clear any existing error message
+        errorMessage.value = '';
+        
+        CompleteMatchResultModel? result = await _repo.getMatchState(currentMatchId.value);
+        
+        if (result != null) {
+          matchResult.value = result;
+          matchResult.refresh();
+          
+          // Update reactive live status during silent refresh
+          isLiveMatch.value = result.status?.toLowerCase() == 'live';
+          
+          developer.log('=== Silent refresh completed successfully ===');
+        } else {
+          developer.log('=== Silent refresh returned null result ===');
+        }
+      } catch (e) {
+        // Log error but don't show it to user for silent refresh
+        developer.log('Silent refresh error: $e');
+      } finally {
+        // Hide refresh indicator
+        isSilentRefreshing.value = false;
+      }
+      // Note: No isLoading.value changes for silent refresh
     }
   }
 
@@ -309,15 +349,6 @@ class MatchController extends GetxController {
       return team1Innings?.bowlingResults ?? [];
     } else {
       return team2Innings?.bowlingResults ?? [];
-    }
-  }
-
-  /// Get overs for a specific team
-  List<OverSummaryModel> getTeamOvers(int inningNo) {
-    if (inningNo == 1) {
-      return team1Overs;
-    } else {
-      return team2Overs;
     }
   }
 
@@ -366,6 +397,19 @@ class MatchController extends GetxController {
     if (errorMessage.value.isNotEmpty) return errorMessage.value;
     if (!hasMatchData) return 'No match data';
     return matchResult.value?.status ?? 'Unknown';
+  }
+  
+  /// Get local match ID for display
+  int? get matchIdDisplay {
+    return currentMatchId.value > 0 ? currentMatchId.value : null;
+  }
+  
+  /// Get online match ID for display (if available)
+  int? get onlineMatchId {
+    // For now, online match ID is not available in CompleteMatchResultModel
+    // This would need to be added to the model or retrieved separately
+    // Return null for now
+    return null;
   }
 
   @override

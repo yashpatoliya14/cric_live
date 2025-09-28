@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 400" width="120" height="400">
+  <defs>
+    <linearGradient id="batGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#8B4513"/>
+      <stop offset="30%" stop-color="#A0522D"/>
+      <stop offset="70%" stop-color="#CD853F"/>
+      <stop offset="100%" stop-color="#8B4513"/>
+    </linearGradient>
+    <linearGradient id="handleGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#654321"/>
+      <stop offset="50%" stop-color="#8B4513"/>
+      <stop offset="100%" stop-color="#654321"/>
+    </linearGradient>
+    <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="2" dy="2" stdDeviation="2" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+  
+  <!-- Bat blade -->
+  <rect x="20" y="50" width="80" height="280" rx="40" ry="40" 
+        fill="url(#batGradient)" filter="url(#shadow)"/>
+  
+  <!-- Handle -->
+  <rect x="45" y="330" width="30" height="60" rx="15" ry="15" 
+        fill="url(#handleGradient)" filter="url(#shadow)"/>
+  
+  <!-- Grip wrapping -->
+  <g stroke="#2F1B14" stroke-width="2" fill="none">
+    <line x1="45" y1="335" x2="75" y2="335"/>
+    <line x1="45" y1="345" x2="75" y2="345"/>
+    <line x1="45" y1="355" x2="75" y2="355"/>
+    <line x1="45" y1="365" x2="75" y2="365"/>
+    <line x1="45" y1="375" x2="75" y2="375"/>
+    <line x1="45" y1="385" x2="75" y2="385"/>
+  </g>
+  
+  <!-- Bat face grain lines -->
+  <g stroke="#654321" stroke-width="1" opacity="0.4" fill="none">
+    <line x1="30" y1="70" x2="30" y2="320"/>
+    <line x1="40" y1="60" x2="40" y2="325"/>
+    <line x1="50" y1="55" x2="50" y2="330"/>
+    <line x1="60" y1="55" x2="60" y2="330"/>
+    <line x1="70" y1="55" x2="70" y2="330"/>
+    <line x1="80" y1="60" x2="80" y2="325"/>
+    <line x1="90" y1="70" x2="90" y2="320"/>
+  </g>
+  
+  <!-- Sweet spot -->
+  <ellipse cx="60" cy="200" rx="25" ry="40" fill="#A0522D" opacity="0.6"/>
+  
+  <!-- Highlight -->
+  <ellipse cx="50" cy="120" rx="8" ry="15" fill="#DEB887" opacity="0.7"/>
+</svg>

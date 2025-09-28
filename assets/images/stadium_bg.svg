@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <defs>
+    <linearGradient id="skyGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#87CEEB"/>
+      <stop offset="100%" stop-color="#E0F6FF"/>
+    </linearGradient>
+    <linearGradient id="fieldGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#32CD32"/>
+      <stop offset="100%" stop-color="#228B22"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Sky background -->
+  <rect width="400" height="200" fill="url(#skyGradient)"/>
+  
+  <!-- Stadium stands -->
+  <ellipse cx="200" cy="350" rx="180" ry="50" fill="#6B4423"/>
+  <ellipse cx="200" cy="340" rx="170" ry="45" fill="#8B5A2B"/>
+  <ellipse cx="200" cy="330" rx="160" ry="40" fill="#A0522D"/>
+  
+  <!-- Field -->
+  <ellipse cx="200" cy="380" rx="200" ry="80" fill="url(#fieldGradient)"/>
+  
+  <!-- Cricket pitch -->
+  <ellipse cx="200" cy="320" rx="100" ry="20" fill="#DEB887" opacity="0.8"/>
+  <rect x="180" y="310" width="40" height="20" fill="#DEB887" opacity="0.8"/>
+  
+  <!-- Wickets -->
+  <g fill="#8B4513" stroke="#654321" stroke-width="1">
+    <rect x="175" y="315" width="2" height="10"/>
+    <rect x="178" y="315" width="2" height="10"/>
+    <rect x="181" y="315" width="2" height="10"/>
+    
+    <rect x="217" y="315" width="2" height="10"/>
+    <rect x="220" y="315" width="2" height="10"/>
+    <rect x="223" y="315" width="2" height="10"/>
+  </g>
+  
+  <!-- Stadium lights -->
+  <circle cx="80" cy="150" r="8" fill="#FFD700" opacity="0.9"/>
+  <circle cx="320" cy="150" r="8" fill="#FFD700" opacity="0.9"/>
+  <circle cx="150" cy="120" r="6" fill="#FFD700" opacity="0.8"/>
+  <circle cx="250" cy="120" r="6" fill="#FFD700" opacity="0.8"/>
+  
+  <!-- Clouds -->
+  <ellipse cx="100" cy="80" rx="20" ry="12" fill="#FFFFFF" opacity="0.7"/>
+  <ellipse cx="300" cy="60" rx="25" ry="15" fill="#FFFFFF" opacity="0.7"/>
+  <ellipse cx="200" cy="40" rx="15" ry="8" fill="#FFFFFF" opacity="0.6"/>
+</svg>

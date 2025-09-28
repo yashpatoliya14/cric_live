@@ -7,102 +7,38 @@ class CreateTeamView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final controller = Get.put(CreateTeamController());
+    final controller = Get.find<CreateTeamController>();
 
     return Scaffold(
       backgroundColor: Colors.blue.shade50,
-      appBar: AppBar(
-        backgroundColor: Colors.deepOrange,
-        foregroundColor: Colors.white,
-        title: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
+      appBar: CommonAppHeader(
+        title: "Create Team",
+        subtitle: "Build your team",
+        leadingIcon: Icons.group_add,
+      ),
+      body: SafeArea(
+        top: false,
+        child: Column(
           children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(Icons.group_add, color: Colors.white, size: 20),
-            ),
-            const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  "Create Team",
-                  style: GoogleFonts.nunito(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 20,
-                    letterSpacing: 1.2,
-                    height: 1.0,
-                    color: Colors.white, // Explicitly set to white
-                  ),
-                ),
-                Text(
-                  "Build your team",
-                  style: GoogleFonts.nunito(
-                    fontWeight: FontWeight.w500,
-                    fontSize: 12,
-                    color: Colors.white.withOpacity(0.9),
-                    height: 1.0,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-        actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 12),
-            child: Obx(
-              () => ElevatedButton(
-                onPressed:
-                    controller.isLoading.value ? null : controller.createTeam,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: Colors.deepOrange,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                ),
-                child:
-                    controller.isLoading.value
-                        ? SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.deepOrange,
-                          ),
-                        )
-                        : Text(
-                          "CREATE",
-                          style: GoogleFonts.nunito(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14,
-                          ),
-                        ),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildTeamInfoSection(controller),
+                  const SizedBox(height: 24),
+                  _buildSelectedPlayersSection(controller),
+                  const SizedBox(height: 24),
+                  _buildAddPlayerSection(controller),
+                  const SizedBox(
+                    height: 80,
+                  ), // Extra space to avoid bottom button overlap
+                ],
               ),
             ),
           ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildTeamInfoSection(controller),
-            const SizedBox(height: 24),
-            _buildSelectedPlayersSection(controller),
-            const SizedBox(height: 24),
-            _buildAddPlayerSection(controller),
+          _buildCreateButton(controller),
           ],
         ),
       ),
@@ -168,6 +104,7 @@ class CreateTeamView extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               CustomTextFormField(
+                textCapitalization: TextCapitalization.sentences,
                 controller: controller.controllerName,
                 hintText: "e.g., The Champions",
                 labelText: "",
@@ -389,6 +326,7 @@ class CreateTeamView extends StatelessWidget {
             children: [
               Expanded(
                 child: CustomTextFormField(
+                  textCapitalization: TextCapitalization.sentences,
                   controller: controller.controllerPlayerName,
                   hintText: "Enter player name...",
                   labelText: "Player Name",
@@ -427,6 +365,82 @@ class CreateTeamView extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCreateButton(CreateTeamController controller) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 8,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        child: Obx(
+          () => SizedBox(
+            width: double.infinity,
+            height: 56,
+            child: ElevatedButton(
+              onPressed:
+                  controller.isLoading.value ? null : controller.createTeam,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.deepOrange,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                elevation: 0,
+                disabledBackgroundColor: Colors.grey.shade300,
+                disabledForegroundColor: Colors.grey.shade500,
+              ),
+              child:
+                  controller.isLoading.value
+                      ? Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            "Creating Team...",
+                            style: GoogleFonts.nunito(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      )
+                      : Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.check_circle_outline, size: 20),
+                          const SizedBox(width: 8),
+                          Text(
+                            "CREATE TEAM",
+                            style: GoogleFonts.nunito(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+            ),
+          ),
+        ),
       ),
     );
   }

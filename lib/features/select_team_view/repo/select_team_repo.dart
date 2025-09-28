@@ -121,4 +121,29 @@ class SelectTeamRepo implements IselectTeam {
       return [];
     }
   }
+
+  Future<bool> deleteTeam(int teamId) async {
+    try {
+      final AuthService authService = AuthService();
+      TokenModel? tokenModel = authService.fetchInfoFromToken();
+      if (tokenModel == null) {
+        throw Exception("User not found");
+      }
+
+      // Delete team via API
+      Map<String, dynamic> response = await apiServices.delete(
+        "/CL_Teams/DeleteTeam/$teamId",
+      );
+
+      // Check if deletion was successful
+      if (response['success'] == true || response.containsKey('message')) {
+        return true;
+      } else {
+        throw Exception("Failed to delete team");
+      }
+    } catch (e) {
+      log("Delete team error: $e");
+      rethrow;
+    }
+  }
 }

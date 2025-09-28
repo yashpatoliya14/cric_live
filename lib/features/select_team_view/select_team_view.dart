@@ -32,36 +32,52 @@ class SelectTeamView extends StatelessWidget {
         onRefresh: () async {
           controller.getAllTeams();
         },
-        child: TeamSelectionWidget(
-          title: APPBAR_SELECT_TEAM,
-          teams: teams,
-          searchHint: 'Search teams, captains, coaches...',
-          isLoading: controller.teams.isEmpty,
-          showStats: false, // Hide stats since we don't have the data yet
-          onTeamSelected: (selectedTeam) {
-            // Return the team data in the expected format
-            Get.back(
-              result: {
-                "teamId": selectedTeam.teamId,
-                "teamName": selectedTeam.teamName,
-              },
-            );
-          },
-          onViewPlayers: (team) {
-            Get.toNamed(
-              NAV_PLAYERS,
-              arguments: {'teamId': team.teamId, 'isView': true},
-            );
-          },
-          onCreateTeam: () async {
-            SelectTeamRepo _repo = SelectTeamRepo();
-            // _repo.getAllTeams();
-            Get.toNamed(NAV_CREATE_TEAM)?.then((value) {
-              controller.getAllTeams();
-            });
-          },
-          emptyState: _buildCustomEmptyState(context),
-          loadingWidget: _buildCustomLoading(context),
+        child: SafeArea(
+          top: false,
+          child: TeamSelectionWidget(
+            title: APPBAR_SELECT_TEAM,
+            teams: teams,
+            searchHint: 'Search teams',
+            isLoading: controller.teams.isEmpty,
+            showStats: false, // Hide stats since we don't have the data yet
+            onTeamSelected: (selectedTeam) {
+              // Return the team data in the expected format
+              Get.back(
+                result: {
+                  "teamId": selectedTeam.teamId,
+                  "teamName": selectedTeam.teamName,
+                },
+              );
+            },
+            onViewPlayers: (team) {
+              Get.toNamed(
+                NAV_PLAYERS,
+                arguments: {'teamId': team.teamId, 'isView': true},
+              );
+            },
+            onDeleteTeam: (team) {
+              // Convert TeamSelectionModel to SelectTeamModel for deletion
+              final selectTeamModel = SelectTeamModel(
+                id: team.id,
+                teamId: team.teamId,
+                teamName: team.teamName,
+                tournamentId: team.tournamentId,
+              );
+              controller.deleteTeam(selectTeamModel);
+            },
+            onCreateTeam: () async {
+              final result = await Get.toNamed(NAV_CREATE_TEAM);
+              if (result != null) {
+                // Team was created successfully, pass the result back to the previous page
+                Get.back(result: result);
+              } else {
+                // User cancelled team creation, just refresh the team list
+                controller.getAllTeams();
+              }
+            },
+            emptyState: _buildCustomEmptyState(context),
+            loadingWidget: _buildCustomLoading(context),
+          ),
         ),
       );
     });
@@ -104,10 +120,13 @@ class SelectTeamView extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           ElevatedButton.icon(
-            onPressed: () {
-              SelectTeamRepo _repo = SelectTeamRepo();
-              // _repo.getAllTeams();
-              Get.toNamed(NAV_CREATE_TEAM);
+            onPressed: () async {
+              final result = await Get.toNamed(NAV_CREATE_TEAM);
+              if (result != null) {
+                // Team was created successfully, pass the result back to the previous page
+                Get.back(result: result);
+              }
+              // If result is null (user cancelled), stay on this screen
             },
             icon: Icon(Icons.add_rounded),
             label: Text('Create First Team'),

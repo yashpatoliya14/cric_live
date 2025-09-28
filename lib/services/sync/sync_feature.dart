@@ -15,13 +15,16 @@ class SyncFeature {
         log("⚠️ No match found with id=$matchId and matchIdOnline != null");
         return;
       }
-      CreateMatchModel model = CreateMatchModel.fromMap(matches[0]);
+      MatchModel model = MatchModel.fromMap(matches[0]);
 
       ApiServices services = ApiServices();
 
+      // Prepare the match data in the format expected by the API
+      Map<String, dynamic> matchData = model.toMap();
+
       Map<String, dynamic> result = await services.put(
         "/CL_Matches/UpdateMatch/${model.matchIdOnline}",
-        model.toMap(),
+        matchData,
       );
 
       log(
@@ -33,40 +36,6 @@ class SyncFeature {
       if (e.toString().contains("Server Error")) {
         log("Server error");
       }
-    }
-  }
-
-  Future<void> syncMatchUpdate({required int matchId}) async {
-    try {
-      // final Database db = await MyDatabase().database;
-      // List<Map<String, dynamic>> matches = await db.rawQuery(
-      //   '''
-      //     Select * from $TBL_MATCHES
-      //     where id = ? and matchIdOnline is not null
-      //   ''',
-      //   [matchId],
-      // );
-      //
-      // if (matches.isEmpty) {
-      //   log("⚠️ No match found with id=$matchId and matchIdOnline != null");
-      //   return;
-      // }
-      // CreateMatchModel model = CreateMatchModel.fromMap(matches[0]);
-
-      // ApiServices _services = ApiServices();
-      // final res = await _services.put("/CL_Matches/UpdateMatchState", {
-      //   "matchState": model.matchState,
-      //   "matchId": model.matchIdOnline,
-      // });
-      // if (res.statusCode == 200) {
-      //   log("Success to update a state");
-      // } else if (res.statusCode == 500) {
-      //   log("Server error");
-      // }
-      updateMatch(matchId: matchId);
-    } catch (e) {
-      log("Error in syncMatchUpdate");
-      log(e.toString());
     }
   }
 

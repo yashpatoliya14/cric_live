@@ -82,21 +82,7 @@ class CreateTeamController extends GetxController {
       );
       isLoading.value = false;
 
-      if (teamId != null) {
-        log("CreateTeam: Team created successfully with ID: $teamId");
-        Get.snackbar(
-          "Success",
-          "Team created successfully!",
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.green.withOpacity(0.1),
-          colorText: Colors.green,
-        );
-
-        log("CreateTeam: Navigating back with team ID: $teamId");
-        Get.back(result: teamId); // Return team ID to previous screen
-        return teamId;
-      } else {
-        log("CreateTeam: Team creation returned null ID");
+      if (teamId == null) {
         Get.snackbar(
           "Error",
           "Failed to create team. Please try again.",
@@ -104,6 +90,12 @@ class CreateTeamController extends GetxController {
         );
         return null;
       }
+
+      final result = {"teamId": teamId, "teamName": controllerName.text.trim()};
+
+      // Return to previous screen with team data
+      Get.back(result: result);
+      return teamId;
     } catch (e) {
       isLoading.value = false;
       log("Create team error: $e");

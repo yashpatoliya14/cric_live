@@ -120,38 +120,31 @@ class ResultService {
     };
   }
   
-  /// Calculate over-by-over momentum
+  /// Calculate match momentum (simplified without over-by-over data)
   static List<Map<String, dynamic>> calculateMatchMomentum(CompleteMatchResultModel matchResult) {
     List<Map<String, dynamic>> momentum = [];
     
-    // Analyze team 1 overs
-    if (matchResult.team1Overs != null) {
-      for (int i = 0; i < matchResult.team1Overs!.length; i++) {
-        OverSummaryModel over = matchResult.team1Overs![i];
-        momentum.add({
-          'inning': 1,
-          'over': i + 1,
-          'runs': over.calculatedTotalRuns,
-          'wickets': over.calculatedWickets,
-          'runRate': _calculateRunRateAtOver(matchResult.team1Overs!, i),
-          'momentum': _calculateOverMomentum(over),
-        });
-      }
+    // Since over-by-over data is not available, provide team-level momentum
+    if (matchResult.team1Innings != null) {
+      momentum.add({
+        'inning': 1,
+        'teamName': matchResult.team1Name ?? 'Team 1',
+        'totalRuns': matchResult.team1Innings!.totalRuns ?? 0,
+        'totalWickets': matchResult.team1Innings!.wickets ?? 0,
+        'runRate': matchResult.team1Innings!.calculatedRunRate,
+        'momentum': 'steady', // Could be enhanced based on other factors
+      });
     }
     
-    // Analyze team 2 overs
-    if (matchResult.team2Overs != null) {
-      for (int i = 0; i < matchResult.team2Overs!.length; i++) {
-        OverSummaryModel over = matchResult.team2Overs![i];
-        momentum.add({
-          'inning': 2,
-          'over': i + 1,
-          'runs': over.calculatedTotalRuns,
-          'wickets': over.calculatedWickets,
-          'runRate': _calculateRunRateAtOver(matchResult.team2Overs!, i),
-          'momentum': _calculateOverMomentum(over),
-        });
-      }
+    if (matchResult.team2Innings != null) {
+      momentum.add({
+        'inning': 2,
+        'teamName': matchResult.team2Name ?? 'Team 2',
+        'totalRuns': matchResult.team2Innings!.totalRuns ?? 0,
+        'totalWickets': matchResult.team2Innings!.wickets ?? 0,
+        'runRate': matchResult.team2Innings!.calculatedRunRate,
+        'momentum': 'steady', // Could be enhanced based on other factors
+      });
     }
     
     return momentum;
@@ -282,27 +275,4 @@ class ResultService {
     return sortedBatsmen.first.runs ?? 0;
   }
   
-  static double _calculateRunRateAtOver(List<OverSummaryModel> overs, int overIndex) {
-    int totalRuns = 0;
-    int totalOvers = overIndex + 1;
-    
-    for (int i = 0; i <= overIndex; i++) {
-      totalRuns += overs[i].calculatedTotalRuns;
-    }
-    
-    return totalOvers > 0 ? totalRuns / totalOvers : 0.0;
-  }
-  
-  static String _calculateOverMomentum(OverSummaryModel over) {
-    int runs = over.calculatedTotalRuns;
-    int wickets = over.calculatedWickets;
-    
-    if (wickets >= 2) return 'collapse';
-    if (wickets == 1 && runs < 6) return 'pressure';
-    if (runs >= 15) return 'explosive';
-    if (runs >= 10) return 'aggressive';
-    if (runs >= 6) return 'steady';
-    if (runs >= 3) return 'slow';
-    return 'tight';
-  }
 }

@@ -71,7 +71,7 @@ class MyDatabase {
                     team2 INTEGER NOT NULL,
                     matchDate datetime NOT NULL,
                     overs INTEGER NOT NULL,
-                    status TEXT NOT NULL CHECK(status IN ('live', 'completed', 'scheduled')),
+                    status TEXT NOT NULL,
                     tossWon INTEGER ,
                     decision TEXT DEFAULT 'remain',
                     tournamentId TEXT ,
@@ -81,9 +81,10 @@ class MyDatabase {
                     nonStrikerBatsmanId Integer ,
                     bowlerId Integer ,
                     currentBattingTeamId Integer ,
-                    currentOvers real , 
                     matchState text,
-                    
+                    result TEXT,
+                    winnerTeamId INTEGER,
+                    firstInningScore INTEGER,
                     
                     FOREIGN KEY (team1) REFERENCES $TBL_TEAMS(teamId),
                     FOREIGN KEY (strikerBatsmanId) REFERENCES $TBL_TEAM_PLAYERS(teamPlayerId),
@@ -93,10 +94,10 @@ class MyDatabase {
                   )
                 ''');
       },
-      version: 51,
+      version: 56,
 
       onUpgrade: (db, oldVersion, newVersion) async {
-        if (oldVersion < 51) {
+        if (oldVersion < 56) {
           await db.execute('''
             Drop table $TBL_BALL_BY_BALL 
             
@@ -175,9 +176,10 @@ class MyDatabase {
                     nonStrikerBatsmanId Integer ,
                     bowlerId Integer ,
                     currentBattingTeamId Integer ,
-                    currentOvers real , 
                     matchState text,
-                    
+                    result TEXT,
+                    winnerTeamId INTEGER,
+                    firstInningScore INTEGER,
                     
                     FOREIGN KEY (team1) REFERENCES $TBL_TEAMS(teamId),
                     FOREIGN KEY (strikerBatsmanId) REFERENCES $TBL_TEAM_PLAYERS(teamPlayerId),

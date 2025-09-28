@@ -30,6 +30,8 @@ const String NAV_RESET_PASSWORD = "/reset-password";
 const String NAV_TOURNAMENT_DISPLAY = '/tournament-display';
 const String NAV_OTP_SCREEN = '/otp-screen';
 const String NAV_TOSS_DECISION = '/toss-decision';
+const String NAV_SPLASH_SCREEN = '/splash-screen';
+const String NAV_FEEDBACK = '/feedback';
 //endregion
 
 // region appbar title

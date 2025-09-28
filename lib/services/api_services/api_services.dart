@@ -1,10 +1,12 @@
 import 'package:cric_live/utils/import_exports.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart';
 
 class ApiServices {
   static ApiServices get to => Get.find();
 
-  static const String baseUrl = "https://192.168.85.147:5001/api";
+  static const String baseUrl = "https://cric-live-backend.onrender.com/api";
+  // static const String baseUrl = "https://10.159.105.147:5001/api";
   // static const String baseUrl = "https://localhost:5001/api";
   static const Duration _timeout = Duration(seconds: 30);
 
@@ -18,7 +20,20 @@ class ApiServices {
     final client = HttpClient();
     client.badCertificateCallback =
         (X509Certificate cert, String host, int port) => true;
+    // Add more timeout and connection settings for better reliability
+    client.connectionTimeout = _timeout;
+    client.idleTimeout = _timeout;
     return client;
+  }
+  
+  // Get appropriate HTTP client based on build mode
+  static http.Client _getHttpClient() {
+    // In release mode, use regular client; in debug mode, use insecure client
+    if (kReleaseMode) {
+      return _createHttpClient();
+    } else {
+      return IOClient(_createInsecureHttpClient());
+    }
   }
 
   // Helper to check if status code indicates success
@@ -76,12 +91,14 @@ class ApiServices {
     print('URL: $uri');
     print('Endpoint: $endpoint');
     try {
-      // Use insecure client for development
-      final client = IOClient(_createInsecureHttpClient());
+      // Use appropriate client based on build mode
+      final client = _getHttpClient();
       final response = await client
           .get(uri, headers: _headers)
           .timeout(_timeout);
-      client.close();
+      if (client is IOClient) {
+        client.close();
+      }
       print('Response Status: ${response.statusCode}');
       if (!_isSuccessStatusCode(response.statusCode)) {
         print('Response Body: ${response.body}');
@@ -113,12 +130,14 @@ class ApiServices {
     print('Data: $data');
 
     try {
-      final client = IOClient(_createInsecureHttpClient());
+      final client = _getHttpClient();
       final response = await client
           .post(uri, headers: _headers, body: jsonEncode(data))
           .timeout(_timeout);
 
-      client.close();
+      if (client is IOClient) {
+        client.close();
+      }
       return _handleResponse(response);
     } on SocketException {
       throw const SocketException('No Internet connection. Please try again.');
@@ -145,11 +164,13 @@ class ApiServices {
     print('URL: $uri');
     print('Data: $data');
     try {
-      final client = IOClient(_createInsecureHttpClient());
+      final client = _getHttpClient();
       final response = await client
           .put(uri, headers: _headers, body: jsonEncode(data))
           .timeout(_timeout);
-      client.close();
+      if (client is IOClient) {
+        client.close();
+      }
       print('Response Status: ${response.statusCode}');
       return _handleResponse(response);
     } on SocketException {
@@ -173,12 +194,57 @@ class ApiServices {
     print('=== API DELETE Request ===');
     print('URL: $uri');
     try {
-      final client = IOClient(_createInsecureHttpClient());
+      final client = _getHttpClient();
       final response = await client
           .delete(uri, headers: _headers)
           .timeout(_timeout);
+      if (client is IOClient) {
+        client.close();
+      }
+      print('Response Status: ${response.statusCode}');
+      return _handleResponse(response);
+    } on SocketException {
+      throw const SocketException('No Internet connection. Please try again.');
+    } on HandshakeException {
+      throw const HandshakeException(
+        'SSL Handshake failed. Check your certificate.',
+      );
+    } on HttpException catch (e) {
+      throw HttpException(e.message);
+    } on FormatException {
+      throw const FormatException('Invalid data received from the server.');
+    } catch (e) {
+      throw Exception('An unexpected error occurred: $e');
+    }
+  }
+
+  // ------------------------- External API POST Request -------------------------
+  /// Makes POST request to external API (not using baseUrl)
+  Future<Map<String, dynamic>> postExternal(
+    String fullUrl,
+    dynamic data,
+  ) async {
+    final uri = Uri.parse(fullUrl);
+    print('=== External API POST Request ===');
+    print('URL: $uri');
+    print('Data: $data');
+
+    try {
+      final client = IOClient(_createInsecureHttpClient());
+      final response = await client
+          .post(uri, headers: _headers, body: jsonEncode(data))
+          .timeout(_timeout);
+
       client.close();
       print('Response Status: ${response.statusCode}');
+      print('Response Body: ${response.body}');
+
+      if (!_isSuccessStatusCode(response.statusCode)) {
+        print('❌ External API POST Failed: ${response.statusCode}');
+      } else {
+        print('✅ External API POST Success: ${response.statusCode}');
+      }
+
       return _handleResponse(response);
     } on SocketException {
       throw const SocketException('No Internet connection. Please try again.');

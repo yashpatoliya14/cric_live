@@ -1,5 +1,6 @@
 import 'package:cric_live/utils/import_exports.dart';
-import 'package:intl/intl.dart';
+
+import 'user_role.dart';
 
 class TournamentView extends StatelessWidget {
   const TournamentView({super.key});
@@ -9,168 +10,267 @@ class TournamentView extends StatelessWidget {
     final controller = Get.put(TournamentController());
 
     return Scaffold(
-      backgroundColor: Colors.blue.shade50,
-      body: NestedScrollView(
-        headerSliverBuilder:
-            (context, innerBoxIsScrolled) => [
-              SliverAppBar(
-                elevation: 0,
-                backgroundColor: Colors.deepOrange,
-                foregroundColor: Colors.white,
-                expandedHeight: 120,
-                floating: false,
-                pinned: true,
-                flexibleSpace: FlexibleSpaceBar(
-                  title: _buildEnhancedTitle(controller),
-                  titlePadding: const EdgeInsets.only(
-                    left: 16,
-                    bottom: 16,
-                    right: 16,
-                  ),
-                  centerTitle: false,
-                  background: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          Colors.deepOrange.shade400,
-                          Colors.deepOrange.shade600,
-                          Colors.deepOrange.shade800,
-                        ],
-                      ),
-                    ),
-                    child: Stack(
-                      children: [
-                        Positioned(
-                          right: -30,
-                          top: -30,
-                          child: Icon(
-                            Icons.emoji_events,
-                            size: 120,
-                            color: Colors.white.withOpacity(0.1),
-                          ),
-                        ),
-                        Positioned(
-                          left: -20,
-                          bottom: -20,
-                          child: Icon(
-                            Icons.sports_cricket,
-                            size: 80,
-                            color: Colors.white.withOpacity(0.05),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
-        body: Obx(() {
-          // Debug information
-          log("Tournament View - isLoading: ${controller.isLoading.value}");
-          log("Tournament View - tournament: ${controller.tournament.value}");
-          log("Tournament View - tournamentId: ${controller.tournamentId}");
-          log("Tournament View - hostId: ${controller.hostId}");
-
-          if (controller.isLoading.value) {
-            return _buildLoadingState();
-          }
-
-          if (controller.tournament.value == null) {
-            return _buildErrorState(controller);
-          }
-
-          return RefreshIndicator(
-            onRefresh: () async {
-              controller.refreshData();
-            },
-            color: Colors.deepOrange,
-            backgroundColor: Colors.white,
-            child: _buildTournamentContent(controller),
-          );
-        }),
+      backgroundColor: Colors.grey.shade50,
+      appBar: CommonAppHeader(
+        title: 'Tournament',
+        subtitle: 'Tournament details and matches',
+        leadingIcon: Icons.emoji_events,
+        actions: [
+          IconButton(
+            tooltip: 'Refresh',
+            icon: const Icon(Icons.refresh_rounded, color: Colors.white),
+            onPressed: () => controller.refreshData(),
+          ),
+        ],
       ),
-      floatingActionButton: Obx(
-        () =>
-            controller.isUserScorer.value
-                ? FloatingActionButton.extended(
-                  onPressed: () async {
-                    Map<String, dynamic>? result = await Get.toNamed(
-                      NAV_CREATE_MATCH,
-                      arguments: {"tournamentId": controller.tournamentId},
-                    );
-                    if (result != null) {
-                      controller.refreshData();
-                    }
-                  },
-                  backgroundColor: Colors.deepOrange,
-                  foregroundColor: Colors.white,
-                  icon: const Icon(Icons.add),
-                  label: Text(
-                    "Add Match",
-                    style: GoogleFonts.nunito(fontWeight: FontWeight.w600),
-                  ),
-                  elevation: 4,
-                )
-                : const SizedBox.shrink(),
+      body: SafeArea(
+        top: false,
+        child: Obx(() {
+        // Debug information
+        log("Tournament View - isLoading: ${controller.isLoading.value}");
+        log("Tournament View - tournament: ${controller.tournament.value}");
+        log("Tournament View - tournamentId: ${controller.tournamentId}");
+        log("Tournament View - hostId: ${controller.hostId}");
+
+        if (controller.isLoading.value) {
+          return TournamentWidgets.loadingState(
+            title: 'Loading Tournament...',
+            subtitle: 'Please wait while we fetch the details',
+          );
+        }
+
+        if (controller.tournament.value == null) {
+          return _buildErrorState(controller);
+        }
+
+        return RefreshIndicator(
+          onRefresh: () async {
+            controller.refreshData();
+          },
+          child: _buildTournamentContent(controller),
+        );
+      })),
+      floatingActionButton: Obx(() {
+        // Add debugging for FloatingActionButton visibility
+        log("🎯 FloatingActionButton Debug:");
+        log("   - canCreateMatches: ${controller.canCreateMatches}");
+        log("   - userRole: ${controller.userRole.value}");
+        log("   - hasAdminAccess: ${controller.hasAdminAccess}");
+        
+        if (!controller.canCreateMatches) {
+          log("   - FAB Hidden (no create access)");
+          return const SizedBox.shrink();
+        }
+        
+        log("   - FAB Visible (create access granted)");
+        return FloatingActionButton(
+          onPressed: () async {
+            dynamic result = await Get.toNamed(
+              NAV_CREATE_MATCH,
+              arguments: {"tournamentId": controller.tournamentId},
+            );
+            if (result != null) {
+              controller.refreshData();
+            }
+          },
+          backgroundColor: Colors.deepOrange,
+          child: const Icon(Icons.add, color: Colors.white),
+        );
+      }),
+    );
+  }
+
+  Widget _buildErrorState(TournamentController controller) {
+    return TournamentWidgets.emptyState(
+      icon: Icons.error_outline,
+      title: "Tournament Not Found",
+      subtitle: "Unable to load tournament details",
+      iconColor: Colors.red.withValues(alpha: 0.7),
+      action: ElevatedButton.icon(
+        onPressed: () => controller.refreshData(),
+        icon: const Icon(Icons.refresh, size: 18),
+        label: Text(
+          "Try Again",
+          style: GoogleFonts.nunito(fontWeight: FontWeight.w600),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.deepOrange,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
       ),
     );
   }
 
-  Widget _buildEnhancedTitle(TournamentController controller) {
-    return Obx(
-      () => ShaderMask(
-        shaderCallback:
-            (bounds) => LinearGradient(
-              colors: [Colors.white, Colors.white.withOpacity(0.8)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ).createShader(bounds),
+  Widget _buildTournamentContent(TournamentController controller) {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        _buildCurrentTimeCard(),
+        const SizedBox(height: 12),
+        _buildTournamentInfo(controller),
+        const SizedBox(height: 16),
+        _buildMatchesSection(controller),
+        const SizedBox(height: 80), // Space for FAB
+      ],
+    );
+  }
+
+  Widget _buildCurrentTimeCard() {
+    return Card(
+      elevation: 1,
+      color: Colors.blue.shade50,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          mainAxisAlignment: MainAxisAlignment.start,
           children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                controller.isUserScorer.value
-                    ? Icons.edit_note
-                    : Icons.visibility,
-                color: Colors.white,
-                size: 20,
-              ),
+            Icon(
+              Icons.access_time_filled,
+              color: Colors.blue.shade700,
+              size: 20,
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    controller.tournament.value?.name ?? "Tournament",
+                    'Current Date & Time',
                     style: GoogleFonts.nunito(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1.0,
-                      height: 1.0,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    controller.userRoleText,
-                    style: GoogleFonts.nunito(
-                      color: Colors.white.withOpacity(0.9),
                       fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      height: 1.0,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.blue.shade800,
+                    ),
+                  ),
+                  StreamBuilder<DateTime>(
+                    stream: Stream.periodic(
+                      const Duration(seconds: 1),
+                      (_) => DateTime.now(),
+                    ),
+                    initialData: DateTime.now(),
+                    builder: (context, snapshot) {
+                      final now = snapshot.data ?? DateTime.now();
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            DateFormat('EEE, MMM d, yy').format(now),
+                            style: GoogleFonts.nunito(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.blue.shade700,
+                            ),
+                          ),
+                          Text(
+                            DateFormat('h:mm:ss a').format(now),
+                            style: GoogleFonts.nunito(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.blue.shade900,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTournamentInfo(TournamentController controller) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.info_outline, color: Colors.deepOrange, size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  "Tournament Details",
+                  style: GoogleFonts.nunito(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey[800],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Obx(
+              () => Column(
+                children: [
+                  TournamentWidgets.infoRow(
+                    "Location",
+                    controller.tournament.value?.location ?? "N/A",
+                    Icons.location_on,
+                  ),
+                  TournamentWidgets.infoRow(
+                    "Format",
+                    controller.tournament.value?.format ?? "N/A",
+                    Icons.sports_cricket,
+                  ),
+                  TournamentWidgets.infoRow(
+                    "Start Date & Time",
+                    TournamentWidgets.formatCompactDateTime(
+                      controller.tournament.value?.startDate,
+                    ),
+                    Icons.event,
+                    valueColor: Colors.green.shade700,
+                  ),
+                  TournamentWidgets.infoRow(
+                    "End Date & Time",
+                    TournamentWidgets.formatCompactDateTime(
+                      controller.tournament.value?.endDate,
+                    ),
+                    Icons.event_busy,
+                    valueColor: Colors.red.shade700,
+                  ),
+                  TournamentWidgets.infoRow(
+                    "Duration",
+                    TournamentWidgets.formatTournamentDateRange(
+                      controller.tournament.value?.startDate,
+                      controller.tournament.value?.endDate,
+                    ),
+                    Icons.calendar_month,
+                  ),
+                  TournamentWidgets.infoRow(
+                    "Status",
+                    TournamentWidgets.formatTimeUntilStart(
+                      controller.tournament.value?.startDate,
+                    ),
+                    Icons.schedule,
+                    valueColor: _getStatusColor(
+                      controller.tournament.value?.startDate,
+                    ),
+                  ),
+                  // Show role information for all users
+                  GestureDetector(
+                    onTap: () => controller.showRoleInfoDialog(),
+                    child: TournamentWidgets.infoRow(
+                      "Your Role",
+                      controller.userRoleText,
+                      controller.userRole.value == UserRole.viewer
+                          ? Icons.visibility
+                          : controller.userRole.value == UserRole.host
+                              ? Icons.admin_panel_settings
+                              : Icons.edit,
+                      valueColor: controller.userRole.value == UserRole.viewer
+                          ? Colors.blue.shade600
+                          : controller.userRole.value == UserRole.host
+                              ? Colors.deepOrange
+                              : Colors.green,
                     ),
                   ),
                 ],
@@ -182,253 +282,35 @@ class TournamentView extends StatelessWidget {
     );
   }
 
-  Widget _buildLoadingState() {
-    return const FullScreenLoader(
-      message: 'Loading Tournament...',
-      loaderColor: Colors.deepOrange,
-    );
-  }
-
-  Widget _buildErrorState(TournamentController controller) {
-    return Center(
-      child: Container(
-        margin: const EdgeInsets.all(32),
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.1),
-              spreadRadius: 1,
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.error_outline,
-              size: 48,
-              color: Colors.red.withOpacity(0.7),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              "Tournament Not Found",
-              style: GoogleFonts.nunito(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: Colors.grey[800],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              "Unable to load tournament details",
-              textAlign: TextAlign.center,
-              style: GoogleFonts.nunito(fontSize: 14, color: Colors.grey[600]),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton.icon(
-              onPressed: () => controller.refreshData(),
-              icon: const Icon(Icons.refresh, size: 18),
-              label: Text(
-                "Try Again",
-                style: GoogleFonts.nunito(fontWeight: FontWeight.w600),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.deepOrange,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTournamentContent(TournamentController controller) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildTournamentInfo(controller),
-          const SizedBox(height: 24),
-          _buildMatchesSection(controller),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTournamentInfo(TournamentController controller) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.deepOrange.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  Icons.info_outline,
-                  color: Colors.deepOrange,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                "Tournament Details",
-                style: GoogleFonts.nunito(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.grey[800],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Obx(
-            () => Column(
-              children: [
-                _buildInfoRow(
-                  "Location",
-                  controller.tournament.value?.location ?? "N/A",
-                  Icons.location_on,
-                ),
-                _buildInfoRow(
-                  "Format",
-                  controller.tournament.value?.format ?? "N/A",
-                  Icons.sports_cricket,
-                ),
-                _buildInfoRow(
-                  "Duration",
-                  controller.tournament.value != null
-                      ? "${DateFormat('MMM d').format(controller.tournament.value!.startDate)} - ${DateFormat('MMM d, yy').format(controller.tournament.value!.endDate)}"
-                      : "N/A",
-                  Icons.date_range,
-                ),
-                if (controller.isUserScorer.value)
-                  _buildInfoRow(
-                    "Your Role",
-                    controller.userRoleText,
-                    Icons.admin_panel_settings,
-                    valueColor:
-                        controller.userRoleText == "Tournament Admin"
-                            ? Colors.deepOrange
-                            : Colors.green,
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInfoRow(
-    String label,
-    String value,
-    IconData icon, {
-    Color? valueColor,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        children: [
-          Icon(icon, size: 16, color: Colors.grey[600]),
-          const SizedBox(width: 8),
-          Text(
-            "$label:",
-            style: GoogleFonts.nunito(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey[700],
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              value,
-              style: GoogleFonts.nunito(
-                fontSize: 14,
-                color: valueColor ?? Colors.grey[800],
-                fontWeight:
-                    valueColor != null ? FontWeight.w600 : FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildMatchesSection(TournamentController controller) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(Icons.sports, color: Colors.blue, size: 20),
-                ),
-                const SizedBox(width: 12),
+                Icon(Icons.sports_cricket, color: Colors.blue, size: 20),
+                const SizedBox(width: 8),
                 Text(
-                  "Tournament Matches",
+                  "Matches",
                   style: GoogleFonts.nunito(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
                     color: Colors.grey[800],
                   ),
                 ),
                 const Spacer(),
                 Obx(
                   () => Text(
-                    "${controller.matches.length} matches",
+                    "${controller.matches.length}",
                     style: GoogleFonts.nunito(
-                      fontSize: 12,
+                      fontSize: 14,
                       color: Colors.grey[600],
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),
@@ -437,49 +319,63 @@ class TournamentView extends StatelessWidget {
           ),
           Obx(() {
             if (controller.matches.isEmpty) {
-              return Container(
-                padding: const EdgeInsets.all(32),
-                child: Column(
-                  children: [
-                    Icon(
-                      Icons.sports_cricket_outlined,
-                      size: 48,
-                      color: Colors.grey[400],
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      "No matches yet",
-                      style: GoogleFonts.nunito(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      controller.isUserScorer.value
-                          ? "Add your first match using the + button"
-                          : "No matches have been created for this tournament",
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.nunito(
-                        fontSize: 14,
-                        color: Colors.grey[500],
-                      ),
-                    ),
-                  ],
-                ),
+              return TournamentWidgets.emptyState(
+                icon: Icons.sports_cricket_outlined,
+                title: "No matches scheduled",
+                subtitle: controller.canCreateMatches
+                    ? "Get started by creating your first match"
+                    : controller.userRole.value == UserRole.viewer
+                        ? "No matches available to view yet"
+                        : "No matches created yet",
+                action: controller.canCreateMatches
+                    ? ElevatedButton.icon(
+                        onPressed: () async {
+                          dynamic result = await Get.toNamed(
+                            NAV_CREATE_MATCH,
+                            arguments: {
+                              "tournamentId": controller.tournamentId,
+                            },
+                          );
+                          if (result != null) {
+                            controller.refreshData();
+                          }
+                        },
+                        icon: const Icon(Icons.add, size: 16),
+                        label: Text(
+                          "Create Match",
+                          style: GoogleFonts.nunito(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.deepOrange,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      )
+                    : null,
               );
             }
 
-            return ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: controller.matches.length,
-              separatorBuilder: (context, index) => const Divider(height: 1),
-              itemBuilder: (context, index) {
-                final match = controller.matches[index];
-                return _buildMatchCard(match, controller);
-              },
+            return Column(
+              children: [
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: controller.matches.length,
+                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  itemBuilder: (context, index) {
+                    final match = controller.matches[index];
+                    return TournamentWidgets.animatedListItem(
+                      child: _buildMatchCard(match, controller, context),
+                      index: index,
+                    );
+                  },
+                ),
+                const SizedBox(height: 8),
+              ],
             );
           }),
         ],
@@ -488,106 +384,286 @@ class TournamentView extends StatelessWidget {
   }
 
   Widget _buildMatchCard(
-    CreateMatchModel match,
+    MatchModel match,
     TournamentController controller,
+    BuildContext context,
   ) {
     final team1 = match.team1Name ?? 'Team A';
     final team2 = match.team2Name ?? 'Team B';
-    final matchDate =
-        match.matchDate != null
-            ? DateFormat('MMM d').format(match.matchDate!)
-            : 'TBD';
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () => controller.viewMatch(match),
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(Icons.sports_cricket, color: Colors.blue, size: 24),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '$team1 vs $team2',
-                      style: GoogleFonts.nunito(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.grey[800],
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+    return Tooltip(
+      message:
+          match.matchDate != null
+              ? 'Full Match Details:\n${TournamentWidgets.formatDetailedMatchDate(match.matchDate)}\nTap to view match details'
+              : 'Match date and time not set yet',
+      preferBelow: false,
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        leading: CircleAvatar(
+          backgroundColor: Colors.blue.withValues(alpha: 0.1),
+          child: Icon(
+            Icons.sports_cricket,
+            color: Colors.blue.shade600,
+            size: 20,
+          ),
+        ),
+        title: Text(
+          '$team1 vs $team2',
+          style: GoogleFonts.nunito(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey[800],
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Date Row
+            Row(
+              children: [
+                Icon(Icons.calendar_today, size: 12, color: Colors.blue[600]),
+                const SizedBox(width: 4),
+                Flexible(
+                  child: Text(
+                    match.matchDate != null
+                        ? TournamentWidgets.formatDateOnly(match.matchDate)
+                        : 'Date not set',
+                    style: GoogleFonts.nunito(
+                      fontSize: 11,
+                      color: Colors.blue[700],
+                      fontWeight: FontWeight.w600,
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      matchDate,
-                      style: GoogleFonts.nunito(
-                        fontSize: 13,
-                        color: Colors.grey[600],
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 2),
+            // Time Row
+            Row(
+              children: [
+                Icon(Icons.access_time, size: 12, color: Colors.green[600]),
+                const SizedBox(width: 4),
+                Flexible(
+                  child: Text(
+                    match.matchDate != null
+                        ? TournamentWidgets.formatTimeOnly(match.matchDate)
+                        : 'Time not set',
+                    style: GoogleFonts.nunito(
+                      fontSize: 11,
+                      color: Colors.green[700],
+                      fontWeight: FontWeight.w600,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Obx(() {
+              // Debug match control access
+              log("🎖️ Match Status Chip Debug for ${match.team1Name ?? 'Team1'} vs ${match.team2Name ?? 'Team2'}:");
+              log("   - canControlMatches: ${controller.canControlMatches}");
+              log("   - match.status: ${match.status}");
+              log("   - userRole: ${controller.userRole.value}");
+              log("   - Status chip tap enabled: ${controller.canControlMatches ? 'YES' : 'NO'}");
+              
+              // For viewers/spectators, show status chip but without tap functionality
+              final chip = TournamentWidgets.statusChip(
+                TournamentWidgets.statusText(match.status),
+                TournamentWidgets.statusColor(match.status),
+                onTap: controller.canControlMatches
+                    ? () {
+                        log("🎖️ Status chip tapped for match ${match.id} - User has control access");
+                        controller.matchState(match);
+                      }
+                    : null, // No tap functionality for viewers
+              );
+              
+              // Add a tooltip for viewers to explain they can only view matches
+              if (!controller.canControlMatches) {
+                return Tooltip(
+                  message: 'You can only view matches as a spectator. Tap the match row to view details.',
+                  child: chip,
+                );
+              }
+              
+              return chip;
+            }),
+            // Delete button for tournament admins/scorers (exclude live matches)
+            Obx(() {
+              // Debug delete button visibility
+              log("🗑️ Delete Button Debug for ${match.team1Name ?? 'Team1'} vs ${match.team2Name ?? 'Team2'}:");
+              log("   - canDeleteMatches: ${controller.canDeleteMatches}");
+              log("   - match.status: ${match.status}");
+              log("   - is live match: ${match.status?.toLowerCase() == 'live'}");
+              bool showDeleteButton = controller.canDeleteMatches && match.status?.toLowerCase() != 'live';
+              log("   - Delete button visible: $showDeleteButton");
+              
+              if (showDeleteButton) {
+                return Row(
+                  children: [
+                    const SizedBox(width: 4),
+                    GestureDetector(
+                      onTap:
+                          () => _showDeleteMatchConfirmation(
+                            context,
+                            match,
+                            controller,
+                          ),
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Icon(
+                          Icons.delete_outline,
+                          size: 14,
+                          color: Colors.red.shade600,
+                        ),
                       ),
                     ),
                   ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              Obx(
-                () =>
-                    controller.isUserScorer.value
-                        ? ElevatedButton(
-                          onPressed: () => controller.startMatch(match),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.deepOrange,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
-                          ),
-                          child: Text(
-                            "Start",
-                            style: GoogleFonts.nunito(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 12,
-                            ),
-                          ),
-                        )
-                        : Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            "View",
-                            style: GoogleFonts.nunito(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        ),
-              ),
-            ],
-          ),
+                );
+              }
+              return const SizedBox.shrink();
+            }),
+            const SizedBox(width: 4),
+            Icon(Icons.chevron_right, color: Colors.grey[400], size: 16),
+          ],
         ),
+        onTap: () => controller.viewMatch(match),
+      ),
+    );
+  }
+
+  /// Get color based on tournament status
+  Color _getStatusColor(DateTime? startDate) {
+    if (startDate == null) return Colors.grey;
+
+    final now = DateTime.now();
+    final diff = startDate.difference(now);
+
+    if (diff.isNegative) {
+      return Colors.green; // Tournament started
+    } else if (diff.inDays <= 1) {
+      return Colors.orange; // Starting soon
+    } else {
+      return Colors.blue; // Future tournament
+    }
+  }
+
+  /// Show confirmation dialog for match deletion in tournament
+  void _showDeleteMatchConfirmation(
+    BuildContext context,
+    MatchModel match,
+    TournamentController controller,
+  ) {
+    final team1Name = match.team1Name ?? 'Team A';
+    final team2Name = match.team2Name ?? 'Team B';
+    final matchTitle = '$team1Name vs $team2Name';
+
+    Get.dialog(
+      AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
+            const SizedBox(width: 8),
+            Text(
+              'Delete Match',
+              style: GoogleFonts.nunito(
+                fontWeight: FontWeight.w700,
+                fontSize: 18,
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Are you sure you want to delete this match from the tournament?',
+              style: GoogleFonts.nunito(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.sports_cricket,
+                    color: Colors.deepOrange,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      matchTitle,
+                      style: GoogleFonts.nunito(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'This action cannot be undone.',
+              style: GoogleFonts.nunito(
+                fontSize: 14,
+                color: Colors.grey.shade600,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.nunito(
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade600,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Get.back();
+              controller.deleteMatch(match);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: Text(
+              'Delete',
+              style: GoogleFonts.nunito(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
       ),
     );
   }

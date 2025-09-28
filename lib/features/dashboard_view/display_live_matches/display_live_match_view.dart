@@ -1,30 +1,53 @@
 import 'package:cric_live/utils/import_exports.dart';
 
-class DisplayLiveMatchView extends StatelessWidget {
+class DisplayLiveMatchView extends StatefulWidget {
   const DisplayLiveMatchView({super.key});
 
   @override
+  State<DisplayLiveMatchView> createState() => _DisplayLiveMatchViewState();
+}
+
+class _DisplayLiveMatchViewState extends State<DisplayLiveMatchView> {
+  late ScrollController _scrollController;
+  late DisplayLiveMatchController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = Get.find<DisplayLiveMatchController>();
+    _scrollController = ScrollController();
+    _scrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+      // Load more when user is 200px from bottom
+      _controller.loadMoreMatches();
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final controller = Get.find<DisplayLiveMatchController>();
     return Container(
       color: Colors.blue.shade50,
       child: Column(
         children: [
-          // Section selector
-          _buildSectionSelector(controller),
           // Content area
           Expanded(
             child: Obx(
               () => RefreshIndicator(
                 onRefresh: () async {
-                  if (controller.selectedSection.value == "tournaments") {
-                    await controller.fetchTournaments();
-                  } else {
-                    await controller.getMatchesState();
-                  }
+                  await _controller.forceRefresh();
                 },
                 color: Colors.deepOrange,
-                child: _buildBody(context, controller),
+                child: _buildReactiveBody(context, _controller),
               ),
             ),
           ),
@@ -33,85 +56,89 @@ class DisplayLiveMatchView extends StatelessWidget {
     );
   }
 
-  Widget _buildSectionSelector(DisplayLiveMatchController controller) {
-    return Container(
-      margin: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Obx(
-        () => Row(
-          children: [
-            Expanded(
-              child: _buildSectionButton(
-                controller,
-                "matches",
-                "Matches",
-                Icons.sports_cricket,
-              ),
-            ),
-            Expanded(
-              child: _buildSectionButton(
-                controller,
-                "tournaments",
-                "Tournaments",
-                Icons.emoji_events,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSectionButton(
+  /// Reactive body with live update indicators
+  Widget _buildReactiveBody(
+    BuildContext context,
     DisplayLiveMatchController controller,
-    String section,
-    String title,
-    IconData icon,
   ) {
-    final isSelected = controller.selectedSection.value == section;
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () => controller.switchSection(section),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-          decoration: BoxDecoration(
-            color: isSelected ? Colors.deepOrange : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                size: 20,
-                color: isSelected ? Colors.white : Colors.grey.shade600,
+    return Column(
+      children: [
+        // Live update status bar (only show when refreshing manually)
+        if (controller.isRefreshing.value)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+            decoration: BoxDecoration(
+              color: Colors.deepOrange.shade50,
+              border: Border(
+                bottom: BorderSide(color: Colors.deepOrange.shade100, width: 1),
               ),
-              const SizedBox(width: 8),
-              Text(
-                title,
-                style: GoogleFonts.poppins(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: isSelected ? Colors.white : Colors.grey.shade600,
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.deepOrange.shade400),
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(width: 12),
+                Text(
+                  'Updating live matches...',
+                  style: GoogleFonts.nunito(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.deepOrange.shade700,
+                  ),
+                ),
+              ],
+            ),
           ),
+        
+        // Main content
+        Expanded(
+          child: _buildBody(context, controller),
         ),
-      ),
+        
+        // Live polling indicator at bottom (subtle)
+        if (controller.isPollingActive.value && !controller.isInitialLoading.value)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
+            decoration: BoxDecoration(
+              color: Colors.green.shade50,
+              border: Border(
+                top: BorderSide(color: Colors.green.shade100, width: 1),
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade400,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const SizedBox.shrink(),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Live updates active',
+                  style: GoogleFonts.nunito(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.green.shade600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
     );
   }
 
@@ -119,21 +146,18 @@ class DisplayLiveMatchView extends StatelessWidget {
     BuildContext context,
     DisplayLiveMatchController controller,
   ) {
-    if (controller.isLoading.value) {
+    // Only show full screen loader on initial load
+    if (controller.isInitialLoading.value) {
       return _buildLoadingView(context);
     }
 
-    // Handle error state
-    if (controller.error.value.isNotEmpty) {
+    // Handle error state (only if we have no data to show)
+    if (controller.error.value.isNotEmpty && controller.matches.isEmpty) {
       return _buildErrorView(context, controller);
     }
 
-    // Show content based on selected section
-    if (controller.selectedSection.value == "tournaments") {
-      return _buildTournamentsContent(context, controller);
-    } else {
-      return _buildMatchesContent(context, controller);
-    }
+    // Show matches content (with reactive updates)
+    return _buildMatchesContent(context, controller);
   }
 
   Widget _buildMatchesContent(
@@ -147,259 +171,31 @@ class DisplayLiveMatchView extends StatelessWidget {
 
     // If we have matches but no match states, use basic match data
     if (controller.matches.isNotEmpty && controller.matchesState.isEmpty) {
-      return ListView.builder(
-        padding: const EdgeInsets.all(16),
+      return _buildPaginatedMatchesList(
+        controller,
         itemBuilder: (context, index) {
+          if (index >= controller.matches.length) {
+            return _buildPaginationLoader(controller);
+          }
           final match = controller.matches[index];
           return _buildBasicMatchCard(context, match);
         },
-        itemCount: controller.matches.length,
+        itemCount: controller.matches.length + (controller.hasMoreMatches.value ? 1 : 0),
       );
     }
 
     // Show matches with complete state data
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
+    return _buildPaginatedMatchesList(
+      controller,
       itemBuilder: (context, index) {
+        if (index >= controller.matchesState.length) {
+          return _buildPaginationLoader(controller);
+        }
         final matchState = controller.matchesState[index];
         final match = controller.matches[index];
         return _buildModernMatchCard(context, matchState, match);
       },
-      itemCount: controller.matchesState.length,
-    );
-  }
-
-  Widget _buildTournamentsContent(
-    BuildContext context,
-    DisplayLiveMatchController controller,
-  ) {
-    // Handle empty state
-    if (controller.tournaments.isEmpty) {
-      return _buildEmptyTournamentsView(context, controller);
-    }
-
-    // Show tournaments with modern design
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemBuilder: (context, index) {
-        final tournament = controller.tournaments[index];
-        return _buildTournamentCard(context, tournament);
-      },
-      itemCount: controller.tournaments.length,
-    );
-  }
-
-  Widget _buildTournamentCard(BuildContext context, dynamic tournament) {
-    final status = tournament['status']?.toString().toLowerCase() ?? 'unknown';
-    Color statusColor = Colors.grey;
-    if (status == 'ongoing') statusColor = Colors.green;
-    if (status == 'upcoming') statusColor = Colors.blue;
-    if (status == 'completed') statusColor = Colors.grey;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(20),
-          onTap: () {
-            // TODO: Navigate to tournament details
-            Get.snackbar(
-              'Tournament',
-              'Opening ${tournament['name']}...',
-              backgroundColor: Colors.deepOrange,
-              colorText: Colors.white,
-              snackPosition: SnackPosition.BOTTOM,
-            );
-          },
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Tournament header
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: statusColor,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        status.toUpperCase(),
-                        style: GoogleFonts.poppins(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ),
-                    const Spacer(),
-                    Icon(
-                      Icons.emoji_events,
-                      color: Colors.amber.shade600,
-                      size: 24,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                // Tournament name
-                Text(
-                  tournament['name'] ?? 'Tournament',
-                  style: GoogleFonts.poppins(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.grey.shade800,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                // Tournament details
-                Row(
-                  children: [
-                    _buildTournamentStat(
-                      Icons.groups,
-                      '${tournament['teams']} Teams',
-                    ),
-                    const SizedBox(width: 16),
-                    _buildTournamentStat(
-                      Icons.sports_cricket,
-                      '${tournament['matches']} Matches',
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                // Venue and date
-                Row(
-                  children: [
-                    Icon(
-                      Icons.location_on,
-                      size: 16,
-                      color: Colors.grey.shade500,
-                    ),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        tournament['venue'] ?? 'TBD',
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.calendar_today,
-                      size: 16,
-                      color: Colors.grey.shade500,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      tournament['startDate'] ?? 'TBD',
-                      style: GoogleFonts.poppins(
-                        fontSize: 12,
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTournamentStat(IconData icon, String text) {
-    return Row(
-      children: [
-        Icon(icon, size: 16, color: Colors.deepOrange),
-        const SizedBox(width: 4),
-        Text(
-          text,
-          style: GoogleFonts.poppins(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: Colors.grey.shade700,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildEmptyTournamentsView(
-    BuildContext context,
-    DisplayLiveMatchController controller,
-  ) {
-    return Center(
-      child: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.emoji_events_outlined,
-                size: 80,
-                color: Colors.grey.shade400,
-              ),
-              const SizedBox(height: 24),
-              Text(
-                'No Live Tournaments',
-                style: GoogleFonts.poppins(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.grey.shade600,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'There are no live tournaments at the moment. Check back later for exciting tournaments!',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(
-                  fontSize: 16,
-                  color: Colors.grey.shade500,
-                  height: 1.5,
-                ),
-              ),
-              const SizedBox(height: 32),
-              ElevatedButton.icon(
-                onPressed: () => controller.fetchTournaments(),
-                icon: const Icon(Icons.refresh),
-                label: const Text('Refresh'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.deepOrange,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 12,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+      itemCount: controller.matchesState.length + (controller.hasMoreMatches.value ? 1 : 0),
     );
   }
 
@@ -408,382 +204,96 @@ class DisplayLiveMatchView extends StatelessWidget {
     dynamic match,
     dynamic matchData,
   ) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
-          ),
-        ],
+    return UniversalMatchTile(
+      matchData: match ?? matchData,
+      displayMode: MatchTileDisplayMode.live,
+      onTap: () => Get.toNamed(
+        NAV_MATCH_VIEW,
+        arguments: {
+          'matchId': matchData?.id ?? match?.id,
+          'isLive': true,
+        },
       ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(20),
-          onTap:
-              () => Get.toNamed(
-                NAV_MATCH_VIEW,
-                arguments: {'matchId': matchData.id, 'isLive': true},
-              ),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              children: [
-                // Header with live indicator and match info
-                _buildMatchHeader(context, match),
-                const SizedBox(height: 16),
-                // Teams and scores
-                _buildTeamsSection(context, match),
-                const SizedBox(height: 12),
-                // Match status and description
-                _buildMatchFooter(context, match),
-              ],
-            ),
-          ),
-        ),
+      showHistory: false, // No history button in live view
+      showMatchIds: true, // Show IDs for debugging/tracking
+      showTimeline: true, // Show timeline indicator
+      statusColor: _getStatusColorLive(
+        (match?.status ?? matchData?.status ?? 'unknown').toString().toLowerCase(),
       ),
     );
   }
 
   /// Basic match card for when detailed state data is not available
   Widget _buildBasicMatchCard(BuildContext context, MatchModel match) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
-          ),
-        ],
+    final status = match.status?.toLowerCase() ?? 'unknown';
+
+    return UniversalMatchTile(
+      matchData: match,
+      displayMode: MatchTileDisplayMode.live,
+      onTap: () => Get.toNamed(
+        NAV_MATCH_VIEW,
+        arguments: {'matchId': match.id, 'isLive': true},
       ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(20),
-          onTap:
-              () => Get.toNamed(
-                NAV_MATCH_VIEW,
-                arguments: {'matchId': match.id, 'isLive': true},
-              ),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      showHistory: false, // No history button in live view
+      showMatchIds: true, // Show IDs for debugging/tracking
+      showTimeline: true, // Show timeline indicator
+      statusColor: _getStatusColorLive(status),
+    );
+  }
+
+  /// Build paginated matches list with scroll controller
+  Widget _buildPaginatedMatchesList(
+    DisplayLiveMatchController controller, {
+    required Widget Function(BuildContext, int) itemBuilder,
+    required int itemCount,
+  }) {
+    return ListView.builder(
+      controller: _scrollController,
+      padding: const EdgeInsets.all(12),
+      itemBuilder: itemBuilder,
+      itemCount: itemCount,
+    );
+  }
+
+  /// Build pagination loader widget
+  Widget _buildPaginationLoader(DisplayLiveMatchController controller) {
+    if (!controller.hasMoreMatches.value) {
+      return const SizedBox.shrink(); // Don't show anything if no more matches
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+      alignment: Alignment.center,
+      child: Obx(() => controller.isLoadingMore.value
+          ? Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Match status
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.deepOrange,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    match.status?.toUpperCase() ?? 'MATCH',
-                    style: GoogleFonts.nunito(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 12,
-                      letterSpacing: 0.5,
-                    ),
+                SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.deepOrange.shade400),
                   ),
                 ),
-                const SizedBox(height: 16),
-                // Basic match info
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            match.team1Name ?? 'Team 1',
-                            style: GoogleFonts.nunito(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 16,
-                              color: Colors.grey.shade800,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'vs',
-                            style: GoogleFonts.nunito(
-                              color: Colors.grey.shade500,
-                              fontSize: 12,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            match.team2Name ?? 'Team 2',
-                            style: GoogleFonts.nunito(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 16,
-                              color: Colors.grey.shade800,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        gradient: RadialGradient(
-                          colors: [
-                            Colors.deepOrange.withOpacity(0.2),
-                            Colors.deepOrange.withOpacity(0.05),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.deepOrange.withOpacity(0.1),
-                            blurRadius: 8,
-                            spreadRadius: 2,
-                          ),
-                        ],
-                      ),
-                      child: Icon(
-                        Icons.sports_cricket,
-                        color: Colors.deepOrange,
-                        size: 24,
-                      ),
-                    ),
-                  ],
+                const SizedBox(width: 12),
+                Text(
+                  'Loading more matches...',
+                  style: GoogleFonts.nunito(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey.shade600,
+                  ),
                 ),
               ],
-            ),
-          ),
-        ),
-      ),
+            )
+          : const SizedBox.shrink()),
     );
   }
 
-  Widget _buildMatchHeader(BuildContext context, dynamic match) {
-    final isLive = match?.status?.toLowerCase() == 'live';
-    final status = match?.status?.toUpperCase() ?? 'UNKNOWN';
-    final venue =
-        match?.location ?? match?.team1Innings?.teamName ?? 'Venue TBD';
 
-    return Row(
-      children: [
-        // Live indicator
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: isLive ? Colors.red : Colors.grey.shade400,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (isLive)
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              if (isLive) const SizedBox(width: 6),
-              Text(
-                isLive ? 'LIVE' : status,
-                style: GoogleFonts.nunito(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12,
-                  letterSpacing: 0.5,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const Spacer(),
-        // Match type and venue
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              'T20 Match',
-              style: GoogleFonts.nunito(
-                color: Colors.grey.shade600,
-                fontWeight: FontWeight.w600,
-                fontSize: 12,
-              ),
-            ),
-            Text(
-              venue,
-              style: GoogleFonts.nunito(
-                color: Colors.grey.shade500,
-                fontWeight: FontWeight.w500,
-                fontSize: 11,
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
-      ],
-    );
-  }
 
-  Widget _buildTeamsSection(BuildContext context, dynamic match) {
-    // Safely extract team data with null checks
-    final team1Name = match?.team1Innings?.teamName ?? 'Team 1';
-    final team1Score = match?.team1Innings?.scoreDisplay ?? '0/0';
-    final team1Overs = match?.team1Innings?.overs?.toString() ?? '0.0';
 
-    final team2Name = match?.team2Innings?.teamName ?? 'Team 2';
-    final team2Score = match?.team2Innings?.scoreDisplay ?? '0/0';
-    final team2Overs = match?.team2Innings?.overs?.toString() ?? '0.0';
-
-    return Column(
-      children: [
-        _buildTeamRow(context, team1Name, team1Score, team1Overs, true),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(child: Container(height: 1, color: Colors.grey.shade200)),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Text(
-                'vs',
-                style: GoogleFonts.nunito(
-                  color: Colors.grey.shade400,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                ),
-              ),
-            ),
-            Expanded(child: Container(height: 1, color: Colors.grey.shade200)),
-          ],
-        ),
-        const SizedBox(height: 12),
-        _buildTeamRow(context, team2Name, team2Score, team2Overs, false),
-      ],
-    );
-  }
-
-  Widget _buildTeamRow(
-    BuildContext context,
-    String teamName,
-    String score,
-    String overs,
-    bool isTop,
-  ) {
-    return Row(
-      children: [
-        // Team avatar
-        Container(
-          width: 50,
-          height: 50,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors:
-                  isTop
-                      ? [Colors.deepOrange.shade300, Colors.deepOrange.shade500]
-                      : [Colors.blue.shade300, Colors.blue.shade500],
-            ),
-            borderRadius: BorderRadius.circular(25),
-          ),
-          child: Center(
-            child: Text(
-              teamName.isNotEmpty ? teamName[0].toUpperCase() : 'T',
-              style: GoogleFonts.nunito(
-                color: Colors.white,
-                fontWeight: FontWeight.w800,
-                fontSize: 20,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 16),
-        // Team name
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                teamName,
-                style: GoogleFonts.nunito(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 16,
-                  color: Colors.grey.shade800,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-              Text(
-                '$overs overs',
-                style: GoogleFonts.nunito(
-                  fontWeight: FontWeight.w500,
-                  fontSize: 12,
-                  color: Colors.grey.shade500,
-                ),
-              ),
-            ],
-          ),
-        ),
-        // Score
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            color: Colors.grey.shade50,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey.shade200),
-          ),
-          child: Text(
-            score,
-            style: GoogleFonts.nunito(
-              fontWeight: FontWeight.w800,
-              fontSize: 18,
-              color: Colors.grey.shade800,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMatchFooter(BuildContext context, dynamic match) {
-    final matchSummary =
-        match?.matchSummary ?? match?.resultDescription ?? 'Match in progress';
-
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.info_outline, size: 16, color: Colors.deepOrange.shade400),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              matchSummary,
-              style: GoogleFonts.nunito(
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-                color: Colors.grey.shade700,
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey.shade400),
-        ],
-      ),
-    );
-  }
 
   Widget _buildLoadingView(BuildContext context) {
     return const FullScreenLoader(
@@ -850,7 +360,7 @@ class DisplayLiveMatchView extends StatelessWidget {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () async {
-                  await controller.getMatchesState();
+                  await controller.forceRefresh();
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.deepOrange,
@@ -899,13 +409,13 @@ class DisplayLiveMatchView extends StatelessWidget {
                 gradient: RadialGradient(
                   colors: [
                     Colors.deepOrange.shade100,
-                    Colors.deepOrange.shade50.withOpacity(0.3),
+                    Colors.deepOrange.shade50.withValues(alpha: 0.3),
                   ],
                 ),
                 borderRadius: BorderRadius.circular(50),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.deepOrange.withOpacity(0.2),
+                    color: Colors.deepOrange.withValues(alpha: 0.2),
                     blurRadius: 20,
                     spreadRadius: 5,
                   ),
@@ -914,7 +424,7 @@ class DisplayLiveMatchView extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.deepOrange.shade50.withOpacity(0.7),
+                  color: Colors.deepOrange.shade50.withValues(alpha: 0.7),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -949,7 +459,7 @@ class DisplayLiveMatchView extends StatelessWidget {
                 Expanded(
                   child: ElevatedButton(
                     onPressed: () async {
-                      await controller.getMatchesState();
+                      await controller.forceRefresh();
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.grey.shade100,
@@ -989,5 +499,21 @@ class DisplayLiveMatchView extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  // Map live status to color similar to history view
+  Color _getStatusColorLive(String status) {
+    switch (status) {
+      case 'completed':
+        return Colors.green.shade400;
+      case 'live':
+        return Colors.red.shade400;
+      case 'scheduled':
+        return Colors.blue.shade400;
+      case 'resume':
+        return Colors.orange.shade400;
+      default:
+        return Colors.grey.shade400;
+    }
   }
 }

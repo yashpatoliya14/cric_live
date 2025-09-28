@@ -8,10 +8,10 @@ class ChoosePlayerView extends StatelessWidget {
     final controller = Get.find<ChoosePlayerController>();
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(APPBAR_CHOOSE_PLAYER),
-        elevation: 2,
-        shadowColor: Colors.grey.withOpacity(0.3),
+      appBar: CommonAppHeader(
+        title: 'Choose Player',
+        subtitle: 'Select players for the match',
+        leadingIcon: Icons.people,
         actions: [
           Obx(
             () =>
@@ -21,7 +21,7 @@ class ChoosePlayerView extends StatelessWidget {
                       child: Text(
                         CLEAR_SELECTION,
                         style: TextStyle(
-                          color: Theme.of(context).primaryColor,
+                          color: Colors.redAccent,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -30,21 +30,26 @@ class ChoosePlayerView extends StatelessWidget {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          _buildHeader(controller, context),
-          _buildSearchBar(controller, context),
-          Expanded(
-            child: Obx(
-              () =>
-                  controller.isLoading.value
-                      ? _buildLoadingState()
-                      : controller.filteredPlayers.isEmpty
-                      ? _buildEmptyState(controller, context)
-                      : _buildPlayersList(controller, context),
+      body: SafeArea(
+        top: false,
+        child: Column(
+          children: [
+            _buildHeader(controller, context),
+            if (controller.hiddenPlayersCount > 0)
+              _buildHiddenPlayersInfo(controller, context),
+            _buildSearchBar(controller, context),
+            Expanded(
+              child: Obx(
+                () =>
+                    controller.isLoading.value
+                        ? _buildLoadingState()
+                        : controller.filteredPlayers.isEmpty
+                        ? _buildEmptyState(controller, context)
+                        : _buildPlayersList(controller, context),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
       floatingActionButton: Obx(
         () =>
@@ -118,6 +123,43 @@ class ChoosePlayerView extends StatelessWidget {
                           : Colors.grey.shade600,
                 ),
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHiddenPlayersInfo(
+    ChoosePlayerController controller,
+    BuildContext context,
+  ) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.orange.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.orange.shade200),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.info_outline, color: Colors.orange.shade700, size: 20),
+          const SizedBox(width: 8),
+          Expanded(
+            child: FutureBuilder<String>(
+              future: controller.getHiddenPlayersInfo(),
+              builder: (context, snapshot) {
+                return Text(
+                  snapshot.data ??
+                      '${controller.hiddenPlayersCount} players unavailable',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.orange.shade700,
+                    fontWeight: FontWeight.w500,
+                  ),
+                );
+              },
             ),
           ),
         ],

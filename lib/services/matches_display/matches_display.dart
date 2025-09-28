@@ -3,7 +3,7 @@ import 'package:cric_live/utils/import_exports.dart';
 class MatchesDisplay {
   final AuthService service = AuthService();
   final ApiServices apiServices = ApiServices();
-  final ScoreboardRepo _scoreboardRepo = ScoreboardRepo();
+  final ScoreboardRepository _scoreboardRepo = ScoreboardRepository();
 
   /// Fetch all user's matches based on uid
   Future<List<MatchModel>?> getUsersMatches() async {
@@ -14,8 +14,12 @@ class MatchesDisplay {
       }
       int uid = model.uid!;
 
+      log('📡 Fetching user matches for UID: $uid');
+
+      // Add timestamp parameter to prevent caching
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
       Map<String, dynamic> data = await apiServices.get(
-        "/CL_Matches/GetMatchesByUser/$uid",
+        "/CL_Matches/GetMatchesByUser/$uid?t=$timestamp",
       );
 
       List<MatchModel> matches = [];
@@ -23,49 +27,57 @@ class MatchesDisplay {
       // Check if matches data exists and is a list
       if (data.containsKey("matches") && data["matches"] is List) {
         List<dynamic> rawMatches = data["matches"] as List<dynamic>;
+        log('📋 Raw matches received: ${rawMatches.length}');
 
         for (dynamic matchData in rawMatches) {
-          if (matchData is Map<String, dynamic> ||
-              matchData["status"] == "scheduled") {
+          if (matchData is Map<String, dynamic>) {
             try {
-              if (matchData["status"] == "scheduled") {
-                matchData["team1Name"] = await _scoreboardRepo
-                    .getTeamNameOnline(matchData["team1"]);
-                matchData["team2Name"] = await _scoreboardRepo
-                    .getTeamNameOnline(matchData["team2"]);
-              }
-              if (matchData["matchState"] != null) {
-                matchData["matchState"] =
-                    jsonDecode(matchData["matchState"]) as Map<String, dynamic>;
-              }
+              // Always try to create MatchModel, regardless of matchState
               MatchModel model = MatchModel.fromMap(matchData);
-
               matches.add(model);
+              log(
+                '✅ Successfully created match model: ${model.id} - ${model.status}',
+              );
             } catch (e) {
-              log('Error creating match model: ${e.toString()}');
+              log('❌ Error creating match model: ${e.toString()}');
+              log('🔍 Problematic match data: $matchData');
               // Continue with other matches instead of failing completely
             }
+          } else {
+            log('⚠️ Invalid match data format: $matchData');
           }
         }
       } else {
-        log('No matches found in response or invalid format');
+        log('⚠️ No matches found in response or invalid format');
+        log('🔍 Response structure: ${data.keys.toList()}');
       }
 
       // Log matches info safely
       if (matches.isEmpty) {
-        log("No matches found for user");
+        log("🔍 No valid matches found for user (UID: $uid)");
+      } else {
+        log("📊 Total matches parsed: ${matches.length}");
+        // Log match statuses for debugging
+        final statusCounts = <String, int>{};
+        for (var match in matches) {
+          final status = match.status?.toLowerCase() ?? 'unknown';
+          statusCounts[status] = (statusCounts[status] ?? 0) + 1;
+        }
+        log('📈 Match statuses: $statusCounts');
       }
 
       return matches;
     } catch (e) {
-      log('getUsersMatches error: ${e.toString()}');
+      log('❌ getUsersMatches error: ${e.toString()}');
       // Handle specific error cases
       if (e.toString().contains("Not Found")) {
-        log("⚠️ Match endpoints not implemented on backend server");
+        log("⚠️ Match endpoints not found on backend server");
         log("💡 Returning empty list for now");
         return <MatchModel>[];
       } else if (e.toString().contains("Server Error")) {
-        throw Exception("Server Side Error In fetch matches by user");
+        throw Exception("Server error while fetching user matches");
+      } else if (e.toString().contains("not authenticated")) {
+        throw Exception("User authentication failed");
       }
       rethrow;
     }
@@ -146,11 +158,6 @@ class MatchesDisplay {
         for (dynamic matchData in rawMatches) {
           if (matchData is Map<String, dynamic>) {
             try {
-              // Parse matchState if it's a string
-              if (matchData["matchState"] is String) {
-                matchData["matchState"] = jsonDecode(matchData["matchState"]);
-              }
-
               // Add venue field if not present (fallback)
               if (!matchData.containsKey("location") ||
                   matchData["location"] == null) {
@@ -173,6 +180,56 @@ class MatchesDisplay {
       log('getLiveMatches error: ${e.toString()}');
       if (e.toString().contains("Server Error")) {
         throw Exception("Server Side Error In fetch live matches");
+      }
+      rethrow;
+    }
+  }
+
+  /// Fetch live matches with pagination
+  Future<List<MatchModel>?> getLiveMatchPaginated({required int from, required int limit}) async {
+    try {
+      log('📡 Fetching paginated live matches from: $from, limit: $limit');
+      
+      ApiServices apiServices = ApiServices();
+      Map<String, dynamic> data = await apiServices.get(
+        "/CL_Matches/GetLiveMatch/$from/$limit",
+      );
+
+      List<MatchModel> matches = [];
+
+      // Check if matches data exists and is a list
+      if (data.containsKey("matches") && data["matches"] is List) {
+        List<dynamic> rawMatches = data["matches"] as List<dynamic>;
+        log('📋 Raw matches received: ${rawMatches.length}');
+
+        for (dynamic matchData in rawMatches) {
+          if (matchData is Map<String, dynamic>) {
+            try {
+              // Add venue field if not present (fallback)
+              if (!matchData.containsKey("location") ||
+                  matchData["location"] == null) {
+                matchData["location"] = "Venue TBD";
+              }
+
+              MatchModel model = MatchModel.fromMap(matchData);
+              matches.add(model);
+              log('✅ Successfully created match model: ${model.id} - ${model.status}');
+            } catch (e) {
+              log('❌ Error creating match model: ${e.toString()}');
+            }
+          }
+        }
+      } else {
+        log('⚠️ No matches found in response or invalid format');
+        log('🔍 Response structure: ${data.keys.toList()}');
+      }
+
+      log('📊 Total paginated matches parsed: ${matches.length}');
+      return matches;
+    } catch (e) {
+      log('❌ getLiveMatchPaginated error: ${e.toString()}');
+      if (e.toString().contains("Server Error")) {
+        throw Exception("Server Side Error In fetch paginated live matches");
       }
       rethrow;
     }

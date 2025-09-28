@@ -9,7 +9,23 @@ class ShiftInningView extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
+      backgroundColor: Colors.grey.shade50,
+      appBar: AppBar(
+        backgroundColor: theme.colorScheme.surface,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_ios, color: theme.colorScheme.primary),
+          onPressed: () => Get.back(),
+        ),
+        title: Text(
+          'Second Inning Setup',
+          style: TextStyle(
+            color: theme.colorScheme.onSurface,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        centerTitle: true,
+      ),
       body: SafeArea(
         child: Obx(() {
           if (controller.isLoading.value) {
@@ -23,8 +39,37 @@ class ShiftInningView extends StatelessWidget {
             );
           }
 
-          return _MainView(controller: controller);
+          return _SimplifiedMainView(controller: controller);
         }),
+      ),
+    );
+  }
+}
+
+// Simplified Main View
+class _SimplifiedMainView extends StatelessWidget {
+  final ShiftInningController controller;
+
+  const _SimplifiedMainView({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Match Overview Card - Simplified
+          _SimpleMatchCard(controller: controller),
+          const SizedBox(height: 24),
+
+          // Player Selection - Simplified
+          _SimplePlayerSelection(controller: controller),
+          const SizedBox(height: 32),
+
+          // Start Button - Simplified
+          _SimpleStartButton(controller: controller),
+        ],
       ),
     );
   }
@@ -94,63 +139,188 @@ class _MainView extends StatelessWidget {
 
   const _MainView({required this.controller});
 
+  // Responsive helper methods
+  double _getScreenWidth(BuildContext context) => MediaQuery.of(context).size.width;
+  bool _isTablet(BuildContext context) => _getScreenWidth(context) >= 768;
+  bool _isDesktop(BuildContext context) => _getScreenWidth(context) >= 1024;
+  
+  EdgeInsets _getAdaptivePadding(BuildContext context) {
+    if (_isDesktop(context)) return const EdgeInsets.symmetric(horizontal: 32, vertical: 24);
+    if (_isTablet(context)) return const EdgeInsets.symmetric(horizontal: 24, vertical: 20);
+    return const EdgeInsets.all(16);
+  }
+  
+  double _getMaxContentWidth(BuildContext context) {
+    if (_isDesktop(context)) return 800;
+    if (_isTablet(context)) return 600;
+    return double.infinity;
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return CustomScrollView(
-      slivers: [
-        // App Bar
-        SliverAppBar(
-          expandedHeight: 120,
-          floating: false,
-          pinned: true,
-          backgroundColor: theme.colorScheme.primary,
-          foregroundColor: theme.colorScheme.onPrimary,
-          flexibleSpace: FlexibleSpaceBar(
-            title: const Text(
-              "Second Inning Setup",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            background: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    theme.colorScheme.primary,
-                    theme.colorScheme.primary.withValues(alpha: 0.8),
-                  ],
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            theme.colorScheme.primary.withOpacity(0.02),
+            theme.scaffoldBackgroundColor,
+            theme.scaffoldBackgroundColor,
+          ],
+          stops: const [0.0, 0.3, 1.0],
+        ),
+      ),
+      child: Column(
+        children: [
+          // Enhanced Header with responsive design
+          _EnhancedAppHeader(controller: controller),
+          
+          Expanded(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: _getMaxContentWidth(context),
+                ),
+                child: SingleChildScrollView(
+                  padding: _getAdaptivePadding(context),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Match Overview Card with enhanced design
+                      _EnhancedMatchOverviewCard(controller: controller),
+                      SizedBox(height: _isTablet(context) ? 32 : 24),
+
+                      // Setup Progress with better spacing
+                      _SetupProgressCard(controller: controller),
+                      SizedBox(height: _isTablet(context) ? 32 : 24),
+
+                      // Player Selection with improved layout
+                      _PlayerSelectionSection(controller: controller),
+                      SizedBox(height: _isTablet(context) ? 40 : 32),
+
+                      // Action Button with better sizing
+                      _StartInningButton(controller: controller),
+                      SizedBox(height: _isTablet(context) ? 32 : 24),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
-        ),
+        ],
+      ),
+    );
+  }
+}
 
-        // Content
-        SliverPadding(
-          padding: const EdgeInsets.all(16),
-          sliver: SliverList(
-            delegate: SliverChildListDelegate([
-              // Match Overview Card
-              _MatchOverviewCard(controller: controller),
-              const SizedBox(height: 24),
-
-              // Setup Progress
-              _SetupProgressCard(controller: controller),
-              const SizedBox(height: 24),
-
-              // Player Selection Cards
-              _PlayerSelectionSection(controller: controller),
-              const SizedBox(height: 32),
-
-              // Action Button
-              _StartInningButton(controller: controller),
-              const SizedBox(height: 24),
-            ]),
+// Enhanced App Header Component
+class _EnhancedAppHeader extends StatelessWidget {
+  final ShiftInningController controller;
+  
+  const _EnhancedAppHeader({required this.controller});
+  
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isTablet = screenWidth >= 768;
+    
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        boxShadow: [
+          BoxShadow(
+            color: theme.shadowColor.withOpacity(0.1),
+            offset: const Offset(0, 2),
+            blurRadius: 8,
+          ),
+        ],
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: isTablet ? 24 : 16,
+            vertical: isTablet ? 20 : 16,
+          ),
+          child: Row(
+            children: [
+              // Back Button with enhanced style
+              Container(
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () => Get.back(),
+                    borderRadius: BorderRadius.circular(12),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Icon(
+                        Icons.arrow_back_ios_new,
+                        size: isTablet ? 24 : 20,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              
+              // Header Content
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.secondaryContainer,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(
+                            Icons.swap_horiz_rounded,
+                            size: isTablet ? 24 : 20,
+                            color: theme.colorScheme.onSecondaryContainer,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Second Inning Setup',
+                                style: theme.textTheme.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: isTablet ? 24 : 20,
+                                ),
+                              ),
+                              Text(
+                                'Configure batting order and opening bowler',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: theme.colorScheme.onSurface.withOpacity(0.7),
+                                  fontSize: isTablet ? 16 : 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
-      ],
+      ),
     );
   }
 }
@@ -270,6 +440,180 @@ class _MatchOverviewCard extends StatelessWidget {
   }
 }
 
+// Enhanced Match Overview Card
+class _EnhancedMatchOverviewCard extends StatelessWidget {
+  final ShiftInningController controller;
+
+  const _EnhancedMatchOverviewCard({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isTablet = screenWidth >= 768;
+    final isDesktop = screenWidth >= 1024;
+
+    return Card(
+      elevation: isTablet ? 6 : 4,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
+      ),
+      child: Container(
+        padding: EdgeInsets.all(isTablet ? 28 : 20),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              theme.colorScheme.primaryContainer.withOpacity(0.8),
+              theme.colorScheme.primaryContainer.withOpacity(0.4),
+              theme.colorScheme.surface.withOpacity(0.9),
+            ],
+            stops: const [0.0, 0.6, 1.0],
+          ),
+        ),
+        child: Obx(
+          () => Column(
+            children: [
+              // Inning indicator with enhanced design
+              Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isTablet ? 20 : 16,
+                  vertical: isTablet ? 12 : 8,
+                ),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      theme.colorScheme.secondary,
+                      theme.colorScheme.secondary.withOpacity(0.8),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(25),
+                  boxShadow: [
+                    BoxShadow(
+                      color: theme.colorScheme.secondary.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.sports_cricket,
+                      size: isTablet ? 20 : 16,
+                      color: Colors.white,
+                    ),
+                    SizedBox(width: isTablet ? 10 : 8),
+                    Text(
+                      "Second Inning",
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        fontSize: isTablet ? 16 : 14,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: isTablet ? 24 : 20),
+              
+              // Teams layout with enhanced spacing
+              isDesktop ? 
+                Row(
+                  children: [
+                    Expanded(
+                      child: _EnhancedTeamCard(
+                        teamName: controller.team1.value,
+                        isBatting: controller.battingTeamId == controller.team1Id,
+                        label: controller.battingTeamId == controller.team1Id ? "Batting" : "Bowling",
+                        isTablet: isTablet,
+                      ),
+                    ),
+                    Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 20),
+                      child: _VSIndicator(theme: theme, isTablet: isTablet),
+                    ),
+                    Expanded(
+                      child: _EnhancedTeamCard(
+                        teamName: controller.team2.value,
+                        isBatting: controller.battingTeamId == controller.team2Id,
+                        label: controller.battingTeamId == controller.team2Id ? "Batting" : "Bowling",
+                        isTablet: isTablet,
+                      ),
+                    ),
+                  ],
+                ) :
+                Column(
+                  children: [
+                    _EnhancedTeamCard(
+                      teamName: controller.team1.value,
+                      isBatting: controller.battingTeamId == controller.team1Id,
+                      label: controller.battingTeamId == controller.team1Id ? "Batting" : "Bowling",
+                      isTablet: isTablet,
+                    ),
+                    Padding(
+                      padding: EdgeInsets.symmetric(vertical: isTablet ? 16 : 12),
+                      child: _VSIndicator(theme: theme, isTablet: isTablet),
+                    ),
+                    _EnhancedTeamCard(
+                      teamName: controller.team2.value,
+                      isBatting: controller.battingTeamId == controller.team2Id,
+                      label: controller.battingTeamId == controller.team2Id ? "Batting" : "Bowling",
+                      isTablet: isTablet,
+                    ),
+                  ],
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// Enhanced VS Indicator
+class _VSIndicator extends StatelessWidget {
+  final ThemeData theme;
+  final bool isTablet;
+  
+  const _VSIndicator({required this.theme, required this.isTablet});
+  
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.all(isTablet ? 16 : 12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: theme.shadowColor.withOpacity(0.15),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(
+          color: theme.colorScheme.outline.withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: Text(
+        "VS",
+        style: theme.textTheme.titleMedium?.copyWith(
+          fontWeight: FontWeight.bold,
+          color: theme.colorScheme.primary,
+          fontSize: isTablet ? 18 : 14,
+          letterSpacing: 1,
+        ),
+      ),
+    );
+  }
+}
+
 class _TeamCard extends StatelessWidget {
   final String teamName;
   final bool isBatting;
@@ -333,6 +677,179 @@ class _TeamCard extends StatelessWidget {
                         : theme.colorScheme.onSurface,
                 fontWeight: FontWeight.w600,
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// Enhanced Team Card
+class _EnhancedTeamCard extends StatelessWidget {
+  final String teamName;
+  final bool isBatting;
+  final String label;
+  final bool isTablet;
+
+  const _EnhancedTeamCard({
+    required this.teamName,
+    required this.isBatting,
+    required this.label,
+    required this.isTablet,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      padding: EdgeInsets.all(isTablet ? 20 : 16),
+      decoration: BoxDecoration(
+        gradient: isBatting
+            ? LinearGradient(
+                colors: [
+                  theme.colorScheme.primary.withOpacity(0.15),
+                  theme.colorScheme.primary.withOpacity(0.05),
+                ],
+              )
+            : LinearGradient(
+                colors: [
+                  theme.colorScheme.surface,
+                  theme.colorScheme.surface.withOpacity(0.8),
+                ],
+              ),
+        borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
+        border: Border.all(
+          color: isBatting
+              ? theme.colorScheme.primary.withOpacity(0.6)
+              : theme.colorScheme.outline.withOpacity(0.3),
+          width: isBatting ? 2 : 1,
+        ),
+        boxShadow: isBatting
+            ? [
+                BoxShadow(
+                  color: theme.colorScheme.primary.withOpacity(0.2),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ]
+            : [
+                BoxShadow(
+                  color: theme.shadowColor.withOpacity(0.08),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Team Avatar with enhanced design
+          Container(
+            width: isTablet ? 60 : 50,
+            height: isTablet ? 60 : 50,
+            decoration: BoxDecoration(
+              gradient: isBatting
+                  ? LinearGradient(
+                      colors: [
+                        theme.colorScheme.primary,
+                        theme.colorScheme.primary.withOpacity(0.8),
+                      ],
+                    )
+                  : LinearGradient(
+                      colors: [
+                        theme.colorScheme.outline.withOpacity(0.7),
+                        theme.colorScheme.outline.withOpacity(0.5),
+                      ],
+                    ),
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: (isBatting ? theme.colorScheme.primary : theme.colorScheme.outline)
+                      .withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Center(
+              child: Text(
+                teamName.isNotEmpty ? teamName.substring(0, 1).toUpperCase() : 'T',
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: isTablet ? 24 : 20,
+                ),
+              ),
+            ),
+          ),
+          SizedBox(height: isTablet ? 16 : 12),
+          
+          // Team Name
+          Text(
+            teamName.isNotEmpty ? teamName : "Loading...",
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: isBatting ? theme.colorScheme.primary : theme.colorScheme.onSurface,
+              fontSize: isTablet ? 18 : 16,
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          SizedBox(height: isTablet ? 12 : 8),
+          
+          // Role Badge
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            padding: EdgeInsets.symmetric(
+              horizontal: isTablet ? 16 : 12,
+              vertical: isTablet ? 8 : 6,
+            ),
+            decoration: BoxDecoration(
+              gradient: isBatting
+                  ? LinearGradient(
+                      colors: [
+                        theme.colorScheme.primary,
+                        theme.colorScheme.primary.withOpacity(0.8),
+                      ],
+                    )
+                  : LinearGradient(
+                      colors: [
+                        theme.colorScheme.outline,
+                        theme.colorScheme.outline.withOpacity(0.8),
+                      ],
+                    ),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: (isBatting ? theme.colorScheme.primary : theme.colorScheme.outline)
+                      .withOpacity(0.3),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  isBatting ? Icons.sports_cricket : Icons.sports_baseball,
+                  size: isTablet ? 16 : 14,
+                  color: Colors.white,
+                ),
+                SizedBox(width: isTablet ? 6 : 4),
+                Text(
+                  label,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: isTablet ? 14 : 12,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -501,6 +1018,7 @@ class _PlayerSelectionSection extends StatelessWidget {
             isCompleted:
                 controller.strikerBatsman.value.isNotEmpty &&
                 controller.nonStrikerBatsman.value.isNotEmpty,
+            isTablet: MediaQuery.of(context).size.width >= 768,
           ),
         ),
         const SizedBox(height: 16),
@@ -514,6 +1032,7 @@ class _PlayerSelectionSection extends StatelessWidget {
             isLoading: controller.isSelectingBowler.value,
             onTap: () => controller.selectBowler(),
             isCompleted: controller.bowler.value.isNotEmpty,
+            isTablet: MediaQuery.of(context).size.width >= 768,
           ),
         ),
       ],
@@ -529,6 +1048,7 @@ class _EnhancedPlayerSelectorTile extends StatefulWidget {
   final bool isLoading;
   final VoidCallback onTap;
   final bool isCompleted;
+  final bool isTablet;
 
   const _EnhancedPlayerSelectorTile({
     required this.title,
@@ -538,6 +1058,7 @@ class _EnhancedPlayerSelectorTile extends StatefulWidget {
     required this.isLoading,
     required this.onTap,
     required this.isCompleted,
+    required this.isTablet,
   });
 
   @override
@@ -598,14 +1119,14 @@ class _EnhancedPlayerSelectorTileState
         return Transform.scale(
           scale: _scaleAnimation.value,
           child: Card(
-            elevation: widget.isCompleted ? 3 : 1,
+            elevation: widget.isCompleted ? (widget.isTablet ? 4 : 3) : (widget.isTablet ? 2 : 1),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(widget.isTablet ? 16 : 12),
               side: BorderSide(
                 color:
                     widget.isCompleted
-                        ? Colors.green.withValues(alpha: 0.5)
-                        : theme.colorScheme.outline.withValues(alpha: 0.2),
+                        ? Colors.green.withOpacity(0.5)
+                        : theme.colorScheme.outline.withOpacity(0.2),
                 width: widget.isCompleted ? 2 : 1,
               ),
             ),
@@ -616,10 +1137,10 @@ class _EnhancedPlayerSelectorTileState
                 onTapDown: _onTapDown,
                 onTapUp: _onTapUp,
                 onTapCancel: _onTapCancel,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(widget.isTablet ? 16 : 12),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(widget.isTablet ? 20 : 16),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12),
                     color:
@@ -634,15 +1155,13 @@ class _EnhancedPlayerSelectorTileState
                         children: [
                           AnimatedContainer(
                             duration: const Duration(milliseconds: 300),
-                            padding: const EdgeInsets.all(8),
+                            padding: EdgeInsets.all(widget.isTablet ? 12 : 8),
                             decoration: BoxDecoration(
                               color:
                                   widget.isCompleted
-                                      ? Colors.green.withValues(alpha: 0.1)
-                                      : theme.colorScheme.primary.withValues(
-                                        alpha: 0.1,
-                                      ),
-                              borderRadius: BorderRadius.circular(8),
+                                      ? Colors.green.withOpacity(0.1)
+                                      : theme.colorScheme.primary.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(widget.isTablet ? 12 : 8),
                             ),
                             child: AnimatedSwitcher(
                               duration: const Duration(milliseconds: 300),
@@ -653,7 +1172,7 @@ class _EnhancedPlayerSelectorTileState
                                     widget.isCompleted
                                         ? Colors.green
                                         : theme.colorScheme.primary,
-                                size: 20,
+                                size: widget.isTablet ? 24 : 20,
                               ),
                             ),
                           ),
@@ -666,14 +1185,15 @@ class _EnhancedPlayerSelectorTileState
                                   widget.title,
                                   style: theme.textTheme.titleMedium?.copyWith(
                                     fontWeight: FontWeight.bold,
+                                    fontSize: widget.isTablet ? 18 : 16,
                                   ),
                                 ),
-                                const SizedBox(height: 4),
+                                SizedBox(height: widget.isTablet ? 6 : 4),
                                 Text(
                                   widget.subtitle,
                                   style: theme.textTheme.bodySmall?.copyWith(
-                                    color: theme.colorScheme.onSurface
-                                        .withValues(alpha: 0.7),
+                                    color: theme.colorScheme.onSurface.withOpacity(0.7),
+                                    fontSize: widget.isTablet ? 14 : 12,
                                   ),
                                 ),
                               ],
@@ -683,26 +1203,26 @@ class _EnhancedPlayerSelectorTileState
                             duration: const Duration(milliseconds: 300),
                             child:
                                 widget.isLoading
-                                    ? const SizedBox(
-                                      key: ValueKey('loading'),
-                                      width: 20,
-                                      height: 20,
+                                    ? SizedBox(
+                                      key: const ValueKey('loading'),
+                                      width: widget.isTablet ? 24 : 20,
+                                      height: widget.isTablet ? 24 : 20,
                                       child: CircularProgressIndicator(
                                         strokeWidth: 2,
                                       ),
                                     )
                                     : widget.isCompleted
-                                    ? const Icon(
-                                      key: ValueKey('completed'),
+                                    ? Icon(
+                                      key: const ValueKey('completed'),
                                       Icons.check_circle,
                                       color: Colors.green,
-                                      size: 24,
+                                      size: widget.isTablet ? 28 : 24,
                                     )
                                     : Icon(
-                                      key: ValueKey('arrow'),
+                                      key: const ValueKey('arrow'),
                                       Icons.arrow_forward_ios,
                                       color: theme.colorScheme.outline,
-                                      size: 16,
+                                      size: widget.isTablet ? 18 : 16,
                                     ),
                           ),
                         ],
@@ -715,16 +1235,16 @@ class _EnhancedPlayerSelectorTileState
                                 ? Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const SizedBox(height: 12),
+                                    SizedBox(height: widget.isTablet ? 16 : 12),
                                     Wrap(
-                                      spacing: 8,
-                                      runSpacing: 8,
+                                      spacing: widget.isTablet ? 12 : 8,
+                                      runSpacing: widget.isTablet ? 12 : 8,
                                       children:
                                           widget.playerNames
                                               .where((name) => name.isNotEmpty)
                                               .map(
                                                 (name) =>
-                                                    _PlayerChip(name: name),
+                                                    _PlayerChip(name: name, isTablet: widget.isTablet),
                                               )
                                               .toList(),
                                     ),
@@ -746,8 +1266,9 @@ class _EnhancedPlayerSelectorTileState
 
 class _PlayerChip extends StatefulWidget {
   final String name;
+  final bool isTablet;
 
-  const _PlayerChip({required this.name});
+  const _PlayerChip({required this.name, required this.isTablet});
 
   @override
   State<_PlayerChip> createState() => _PlayerChipState();
@@ -788,14 +1309,17 @@ class _PlayerChipState extends State<_PlayerChip>
         return Transform.scale(
           scale: _scaleAnimation.value,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            padding: EdgeInsets.symmetric(
+              horizontal: widget.isTablet ? 16 : 12,
+              vertical: widget.isTablet ? 8 : 6,
+            ),
             decoration: BoxDecoration(
               color: theme.colorScheme.primaryContainer,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(widget.isTablet ? 20 : 16),
               boxShadow: [
                 BoxShadow(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.2),
-                  blurRadius: 4,
+                  color: theme.colorScheme.primary.withOpacity(0.2),
+                  blurRadius: widget.isTablet ? 6 : 4,
                   offset: const Offset(0, 2),
                 ),
               ],
@@ -805,15 +1329,16 @@ class _PlayerChipState extends State<_PlayerChip>
               children: [
                 Icon(
                   Icons.person,
-                  size: 14,
+                  size: widget.isTablet ? 16 : 14,
                   color: theme.colorScheme.onPrimaryContainer,
                 ),
-                const SizedBox(width: 6),
+                SizedBox(width: widget.isTablet ? 8 : 6),
                 Text(
                   widget.name,
                   style: theme.textTheme.bodySmall?.copyWith(
                     fontWeight: FontWeight.w500,
                     color: theme.colorScheme.onPrimaryContainer,
+                    fontSize: widget.isTablet ? 14 : 12,
                   ),
                 ),
               ],
@@ -822,6 +1347,751 @@ class _PlayerChipState extends State<_PlayerChip>
         );
       },
     );
+  }
+}
+
+// Enhanced Setup Progress Card
+class _EnhancedSetupProgressCard extends StatelessWidget {
+  final ShiftInningController controller;
+
+  const _EnhancedSetupProgressCard({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isTablet = screenWidth >= 768;
+
+    return Obx(() {
+      final hasBatsmen = controller.strikerBatsman.value.isNotEmpty &&
+          controller.nonStrikerBatsman.value.isNotEmpty;
+      final hasBowler = controller.bowler.value.isNotEmpty;
+      final completedSteps = (hasBatsmen ? 1 : 0) + (hasBowler ? 1 : 0);
+      final progress = completedSteps / 2;
+
+      return Card(
+        elevation: isTablet ? 4 : 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
+        ),
+        child: Container(
+          padding: EdgeInsets.all(isTablet ? 24 : 16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
+            gradient: progress == 1.0
+                ? LinearGradient(
+                    colors: [
+                      Colors.green.withOpacity(0.1),
+                      Colors.green.withOpacity(0.05),
+                    ],
+                  )
+                : null,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(isTablet ? 12 : 10),
+                    decoration: BoxDecoration(
+                      color: progress == 1.0
+                          ? Colors.green.withOpacity(0.2)
+                          : theme.colorScheme.primary.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      progress == 1.0 ? Icons.check_circle : Icons.checklist_rtl,
+                      color: progress == 1.0 ? Colors.green : theme.colorScheme.primary,
+                      size: isTablet ? 24 : 20,
+                    ),
+                  ),
+                  SizedBox(width: isTablet ? 16 : 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Setup Progress",
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            fontSize: isTablet ? 18 : 16,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          progress == 1.0
+                              ? "All players selected! Ready to start."
+                              : "Select players to continue",
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurface.withOpacity(0.7),
+                            fontSize: isTablet ? 14 : 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isTablet ? 12 : 10,
+                      vertical: isTablet ? 6 : 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: progress == 1.0
+                          ? Colors.green
+                          : theme.colorScheme.primary,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Text(
+                      "$completedSteps/2",
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        fontSize: isTablet ? 14 : 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: isTablet ? 20 : 16),
+              
+              // Enhanced Progress Bar
+              Container(
+                height: isTablet ? 8 : 6,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(4),
+                  color: theme.colorScheme.outline.withOpacity(0.2),
+                ),
+                child: FractionallySizedBox(
+                  alignment: Alignment.centerLeft,
+                  widthFactor: progress,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(4),
+                      gradient: LinearGradient(
+                        colors: progress == 1.0
+                            ? [Colors.green, Colors.green.shade600]
+                            : [theme.colorScheme.primary, theme.colorScheme.primary.withOpacity(0.8)],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(height: isTablet ? 20 : 16),
+              
+              // Progress Steps
+              Row(
+                children: [
+                  Expanded(
+                    child: _EnhancedProgressStep(
+                      icon: Icons.sports_cricket,
+                      label: "Opening Batsmen",
+                      subtitle: "${controller.strikerBatsman.value.isNotEmpty && controller.nonStrikerBatsman.value.isNotEmpty ? 2 : controller.strikerBatsman.value.isNotEmpty || controller.nonStrikerBatsman.value.isNotEmpty ? 1 : 0}/2 selected",
+                      isCompleted: hasBatsmen,
+                      isTablet: isTablet,
+                    ),
+                  ),
+                  SizedBox(width: isTablet ? 24 : 16),
+                  Expanded(
+                    child: _EnhancedProgressStep(
+                      icon: Icons.sports_baseball,
+                      label: "Opening Bowler",
+                      subtitle: controller.bowler.value.isNotEmpty ? "Selected" : "Not selected",
+                      isCompleted: hasBowler,
+                      isTablet: isTablet,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+    });
+  }
+}
+
+// Enhanced Progress Step
+class _EnhancedProgressStep extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String subtitle;
+  final bool isCompleted;
+  final bool isTablet;
+
+  const _EnhancedProgressStep({
+    required this.icon,
+    required this.label,
+    required this.subtitle,
+    required this.isCompleted,
+    required this.isTablet,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      padding: EdgeInsets.all(isTablet ? 16 : 12),
+      decoration: BoxDecoration(
+        color: isCompleted
+            ? Colors.green.withOpacity(0.1)
+            : theme.colorScheme.outline.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isCompleted
+              ? Colors.green.withOpacity(0.3)
+              : theme.colorScheme.outline.withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            padding: EdgeInsets.all(isTablet ? 12 : 8),
+            decoration: BoxDecoration(
+              color: isCompleted ? Colors.green : theme.colorScheme.outline.withOpacity(0.2),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              isCompleted ? Icons.check_rounded : icon,
+              size: isTablet ? 24 : 20,
+              color: isCompleted ? Colors.white : theme.colorScheme.outline,
+            ),
+          ),
+          SizedBox(height: isTablet ? 12 : 8),
+          Text(
+            label,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: isCompleted ? Colors.green : theme.colorScheme.onSurface,
+              fontSize: isTablet ? 14 : 12,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: 4),
+          Text(
+            subtitle,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurface.withOpacity(0.6),
+              fontSize: isTablet ? 12 : 10,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// Enhanced Player Selection Section
+class _EnhancedPlayerSelectionSection extends StatelessWidget {
+  final ShiftInningController controller;
+
+  const _EnhancedPlayerSelectionSection({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isTablet = screenWidth >= 768;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.only(bottom: isTablet ? 20 : 16),
+          child: Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(isTablet ? 12 : 10),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.group_add,
+                  color: theme.colorScheme.primary,
+                  size: isTablet ? 24 : 20,
+                ),
+              ),
+              SizedBox(width: isTablet ? 16 : 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Select Players",
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        fontSize: isTablet ? 22 : 18,
+                      ),
+                    ),
+                    Text(
+                      "Choose opening batsmen and bowler for the second inning",
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurface.withOpacity(0.7),
+                        fontSize: isTablet ? 14 : 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        
+        // Player selection tiles
+        Obx(() => Column(
+          children: [
+            _EnhancedPlayerSelectorTile(
+              title: "Opening Batsmen",
+              subtitle: "Select 2 opening batsmen for ${controller.battingTeamName}",
+              icon: Icons.sports_cricket,
+              playerNames: [
+                controller.strikerBatsman.value,
+                controller.nonStrikerBatsman.value,
+              ],
+              isLoading: controller.isSelectingBatsmen.value,
+              onTap: () => controller.selectBatsman(),
+              isCompleted: controller.strikerBatsman.value.isNotEmpty &&
+                  controller.nonStrikerBatsman.value.isNotEmpty,
+              isTablet: isTablet,
+            ),
+            SizedBox(height: isTablet ? 20 : 16),
+            _EnhancedPlayerSelectorTile(
+              title: "Opening Bowler",
+              subtitle: "Select 1 opening bowler for ${controller.bowlingTeamName}",
+              icon: Icons.sports_baseball,
+              playerNames: [controller.bowler.value],
+              isLoading: controller.isSelectingBowler.value,
+              onTap: () => controller.selectBowler(),
+              isCompleted: controller.bowler.value.isNotEmpty,
+              isTablet: isTablet,
+            ),
+          ],
+        )),
+      ],
+    );
+  }
+}
+
+// Enhanced Start Inning Button
+class _EnhancedStartInningButton extends StatelessWidget {
+  final ShiftInningController controller;
+
+  const _EnhancedStartInningButton({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isTablet = screenWidth >= 768;
+
+    return Obx(() {
+      final isReady = controller.isReadyToStart;
+      final isLoading = controller.isLoading.value;
+
+      return AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        width: double.infinity,
+        height: isTablet ? 64 : 56,
+        child: ElevatedButton(
+          onPressed: !isLoading ? () => controller.shiftInning() : null, // Force start enabled
+          style: ElevatedButton.styleFrom(
+            backgroundColor: theme.colorScheme.primary, // Always enabled for force start
+            foregroundColor: theme.colorScheme.onPrimary,
+            elevation: isTablet ? 6 : 4, // Always elevated
+            shadowColor: theme.colorScheme.primary.withOpacity(0.3),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(isTablet ? 18 : 16),
+            ),
+          ),
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            child: isLoading
+                ? Row(
+                    key: const ValueKey('loading'),
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SizedBox(
+                        width: isTablet ? 24 : 20,
+                        height: isTablet ? 24 : 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            theme.colorScheme.onPrimary,
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: isTablet ? 16 : 12),
+                      Text(
+                        "Starting Second Inning...",
+                        style: TextStyle(
+                          fontSize: isTablet ? 18 : 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  )
+                : Row(
+                    key: ValueKey('button-$isReady'),
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 200),
+                        child: Icon(
+                          Icons.play_arrow_rounded,
+                          key: ValueKey(isReady),
+                          size: isTablet ? 28 : 24,
+                        ),
+                      ),
+                      SizedBox(width: isTablet ? 12 : 8),
+                      Text(
+                        "Start Second Inning",
+                        style: TextStyle(
+                          fontSize: isTablet ? 18 : 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
+        ),
+      );
+    });
+  }
+}
+
+// Simplified Match Card
+class _SimpleMatchCard extends StatelessWidget {
+  final ShiftInningController controller;
+
+  const _SimpleMatchCard({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Obx(() => Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            theme.colorScheme.primary,
+            theme.colorScheme.primary.withValues(alpha: 0.8),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: theme.colorScheme.primary.withValues(alpha: 0.3),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // Badge
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              'Second Inning',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          
+          // Teams
+          Text(
+            '${controller.team1.value} vs ${controller.team2.value}',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 12),
+          
+          Text(
+            '${controller.battingTeamName} to bat',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.9),
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ),
+    ));
+  }
+}
+
+// Simplified Player Selection
+class _SimplePlayerSelection extends StatelessWidget {
+  final ShiftInningController controller;
+
+  const _SimplePlayerSelection({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Select Players',
+          style: theme.textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: theme.colorScheme.onSurface,
+          ),
+        ),
+        const SizedBox(height: 16),
+        
+        // Opening Batsmen Card
+        Obx(() => _PlayerCard(
+          title: 'Opening Batsmen',
+          subtitle: '${controller.battingTeamName}',
+          icon: Icons.sports_cricket,
+          players: [
+            controller.strikerBatsman.value,
+            controller.nonStrikerBatsman.value,
+          ],
+          isLoading: controller.isSelectingBatsmen.value,
+          onTap: () => controller.selectBatsman(),
+          isCompleted: controller.strikerBatsman.value.isNotEmpty && 
+                      controller.nonStrikerBatsman.value.isNotEmpty,
+        )),
+        
+        const SizedBox(height: 16),
+        
+        // Opening Bowler Card
+        Obx(() => _PlayerCard(
+          title: 'Opening Bowler',
+          subtitle: '${controller.bowlingTeamName}',
+          icon: Icons.sports_baseball,
+          players: [controller.bowler.value],
+          isLoading: controller.isSelectingBowler.value,
+          onTap: () => controller.selectBowler(),
+          isCompleted: controller.bowler.value.isNotEmpty,
+        )),
+      ],
+    );
+  }
+}
+
+// Simple Player Card
+class _PlayerCard extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final List<String> players;
+  final bool isLoading;
+  final VoidCallback onTap;
+  final bool isCompleted;
+
+  const _PlayerCard({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.players,
+    required this.isLoading,
+    required this.onTap,
+    required this.isCompleted,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final hasPlayers = players.any((p) => p.isNotEmpty);
+
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: isCompleted ? Colors.green.withValues(alpha: 0.5) : Colors.transparent,
+          width: 2,
+        ),
+      ),
+      child: InkWell(
+        onTap: isLoading ? null : onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: isCompleted 
+                        ? Colors.green.withValues(alpha: 0.1)
+                        : theme.colorScheme.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      isCompleted ? Icons.check_circle : icon,
+                      color: isCompleted ? Colors.green : theme.colorScheme.primary,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          subtitle,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  if (isLoading)
+                    SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  else
+                    Icon(
+                      Icons.arrow_forward_ios,
+                      size: 16,
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                    ),
+                ],
+              ),
+              
+              if (hasPlayers) ...[
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  children: players
+                      .where((p) => p.isNotEmpty)
+                      .map((player) => Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primaryContainer,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              player,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: theme.colorScheme.onPrimaryContainer,
+                              ),
+                            ),
+                          ))
+                      .toList(),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// Simple Start Button
+class _SimpleStartButton extends StatelessWidget {
+  final ShiftInningController controller;
+
+  const _SimpleStartButton({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Obx(() {
+      final isLoading = controller.isLoading.value;
+
+      return Container(
+        width: double.infinity,
+        height: 56,
+        child: ElevatedButton(
+          onPressed: isLoading ? null : () => controller.shiftInning(),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: theme.colorScheme.primary,
+            foregroundColor: Colors.white,
+            elevation: 3,
+            shadowColor: theme.colorScheme.primary.withValues(alpha: 0.3),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+          ),
+          child: isLoading
+              ? Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Starting...',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                )
+              : Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.play_arrow,
+                      size: 24,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Start Second Inning',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+        ),
+      );
+    });
   }
 }
 
@@ -844,17 +2114,11 @@ class _StartInningButton extends StatelessWidget {
         height: 56,
         child: ElevatedButton(
           onPressed:
-              (isReady && !isLoading) ? () => controller.shiftInning() : null,
+              !isLoading ? () => controller.shiftInning() : null, // Force start enabled
           style: ElevatedButton.styleFrom(
-            backgroundColor:
-                isReady
-                    ? theme.colorScheme.primary
-                    : theme.colorScheme.outline.withValues(alpha: 0.2),
-            foregroundColor:
-                isReady
-                    ? theme.colorScheme.onPrimary
-                    : theme.colorScheme.outline,
-            elevation: isReady ? 4 : 0,
+            backgroundColor: theme.colorScheme.primary, // Always enabled for force start
+            foregroundColor: theme.colorScheme.onPrimary,
+            elevation: 4, // Always elevated
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),
@@ -889,15 +2153,13 @@ class _StartInningButton extends StatelessWidget {
                     children: [
                       const Icon(Icons.play_arrow, size: 24),
                       const SizedBox(width: 8),
-                      Text(
-                        isReady
-                            ? "Start Second Inning"
-                            : "Complete Setup First",
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
+                    Text(
+                      "Start Second Inning",
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
                       ),
+                    ),
                     ],
                   ),
         ),

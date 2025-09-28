@@ -1,7 +1,4 @@
-import 'package:cric_live/common_widgets/loader.dart';
 import 'package:cric_live/utils/import_exports.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'forgot_password_email_controller.dart';
 
 class ForgotPasswordEmailView extends GetView<ForgotPasswordEmailController> {
   const ForgotPasswordEmailView({super.key});
@@ -22,6 +19,7 @@ class ForgotPasswordEmailView extends GetView<ForgotPasswordEmailController> {
           ),
         ),
         child: SafeArea(
+          top: false,
           child: Center(
             child: SingleChildScrollView(
               padding: EdgeInsets.symmetric(horizontal: 24.w),

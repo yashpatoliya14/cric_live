@@ -22,6 +22,7 @@ class SignUpView extends GetView<SignUpController> {
           ),
         ),
         child: SafeArea(
+          top: false,
           child: Center(
             child: SingleChildScrollView(
               padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 16.h),
@@ -116,72 +117,6 @@ class SignUpView extends GetView<SignUpController> {
     );
   }
 
-  Widget _buildProfileImagePicker() {
-    return Center(
-      child: GestureDetector(
-        onTap: controller.pickProfileImage,
-        child: Obx(
-          () => Container(
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withValues(alpha: 0.3),
-                  blurRadius: 10,
-                  offset: const Offset(0, 5),
-                ),
-              ],
-            ),
-            child: Stack(
-              alignment: Alignment.bottomRight,
-              children: [
-                CircleAvatar(
-                  radius: 45.r,
-                  backgroundColor: Colors.grey.shade100,
-                  backgroundImage:
-                      controller.profileImage.value != null
-                          ? FileImage(controller.profileImage.value!)
-                          : null,
-                  child:
-                      controller.profileImage.value == null
-                          ? Icon(
-                            Icons.person_outline,
-                            size: 45.r,
-                            color: Colors.grey.shade400,
-                          )
-                          : null,
-                ),
-                Container(
-                  padding: EdgeInsets.all(8.w),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        Colors.deepOrange.shade400,
-                        Colors.deepOrange.shade600,
-                      ],
-                    ),
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.deepOrange.withValues(alpha: 0.3),
-                        blurRadius: 5,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Icon(
-                    Icons.camera_alt_outlined,
-                    color: Colors.white,
-                    size: 16.r,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 
   Widget _buildSignUpFormCard() {
     return Container(

@@ -1,7 +1,7 @@
 import 'package:cric_live/utils/import_exports.dart';
 
 class SelectTeamController extends GetxController {
-  SelectTeamRepo _repo = SelectTeamRepo();
+  final SelectTeamRepo _repo = SelectTeamRepo();
 
   //variables
   bool wantToStore = false;
@@ -28,5 +28,43 @@ class SelectTeamController extends GetxController {
       tournamentId: tournamentId,
     );
     teams.refresh();
+  }
+
+  Future<void> deleteTeam(SelectTeamModel team) async {
+    try {
+      if (team.teamId == null) {
+        Get.snackbar(
+          "Error",
+          "Cannot delete team: Invalid team ID",
+          snackPosition: SnackPosition.BOTTOM,
+        );
+        return;
+      }
+
+      // Call repository to delete team
+      bool success = await _repo.deleteTeam(team.teamId!);
+      
+      if (success) {
+        // Remove team from local list
+        teams.removeWhere((t) => t.teamId == team.teamId);
+        teams.refresh();
+        
+        Get.snackbar(
+          "Success",
+          "Team '${team.teamName}' deleted successfully",
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.green.withOpacity(0.1),
+          colorText: Colors.green,
+        );
+      }
+    } catch (e) {
+      Get.snackbar(
+        "Error",
+        "Failed to delete team: ${e.toString()}",
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red.withOpacity(0.1),
+        colorText: Colors.red,
+      );
+    }
   }
 }

@@ -21,6 +21,8 @@ class TeamInningsResultModel {
   int? byes;
   int? legByes;
   int? penalties;
+  int? totalBoundaries; // total 4s hit by team
+  int? totalSixes; // total 6s hit by team
   
   TeamInningsResultModel({
     this.teamId,
@@ -42,6 +44,8 @@ class TeamInningsResultModel {
     this.byes,
     this.legByes,
     this.penalties,
+    this.totalBoundaries,
+    this.totalSixes,
   });
 
   // Calculate run rate automatically if not provided
@@ -149,6 +153,8 @@ class TeamInningsResultModel {
       byes: json['byes'] as int?,
       legByes: json['legByes'] as int?,
       penalties: json['penalties'] as int?,
+      totalBoundaries: json['totalBoundaries'] as int?,
+      totalSixes: json['totalSixes'] as int?,
     );
   }
 
@@ -174,6 +180,8 @@ class TeamInningsResultModel {
       'byes': byes,
       'legByes': legByes,
       'penalties': penalties,
+      'totalBoundaries': totalBoundaries,
+      'totalSixes': totalSixes,
     };
   }
 

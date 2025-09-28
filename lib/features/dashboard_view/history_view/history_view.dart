@@ -6,34 +6,37 @@ class HistoryView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = Get.find<HistoryController>();
-    return Container(
-      color: Colors.blue.shade50,
-      child: Column(
-        children: [
-          // Section selector
-          _buildSectionSelector(controller),
-          // Content area
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: () async {
-                if (controller.selectedSection.value == "tournaments") {
-                  await controller.fetchTournaments();
-                } else {
-                  await controller.getMatches();
-                }
-              },
-              color: Colors.deepOrange,
-              child: _buildBody(context, controller),
+    return SafeArea(
+      bottom: true, // Ensure bottom safe area
+      child: Container(
+        color: Colors.blue.shade50,
+        child: Column(
+          children: [
+            // Section selector
+            _buildSectionSelector(controller),
+            // Content area
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: () async {
+                  if (controller.selectedSection.value == "tournaments") {
+                    await controller.fetchTournaments();
+                  } else {
+                    await controller.refreshMatches();
+                  }
+                },
+                color: Colors.deepOrange,
+                child: _buildBody(context, controller),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildSectionSelector(HistoryController controller) {
     return Container(
-      margin: const EdgeInsets.all(16),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 0),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -84,7 +87,7 @@ class HistoryView extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         onTap: () => controller.switchSection(section),
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
           decoration: BoxDecoration(
             color: isSelected ? Colors.deepOrange : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
@@ -147,7 +150,12 @@ class HistoryView extends StatelessWidget {
 
     // Show matches with timeline design
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(
+        16,
+        16,
+        16,
+        100,
+      ), // Added bottom padding
       itemCount: groupedMatches.length,
       itemBuilder: (context, index) {
         final entry = groupedMatches[index];
@@ -172,7 +180,12 @@ class HistoryView extends StatelessWidget {
 
     // Show tournaments with modern design
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(
+        16,
+        16,
+        16,
+        100,
+      ), // Added bottom padding
       itemBuilder: (context, index) {
         final tournament = controller.tournaments[index];
         return _buildHistoryTournamentCard(context, tournament, controller);
@@ -325,81 +338,57 @@ class HistoryView extends StatelessWidget {
     bool isLast,
     HistoryController controller,
   ) {
-    final isCompleted = match.status?.toLowerCase() == 'completed';
     final status = match.status?.toLowerCase() ?? 'unknown';
 
     return Container(
       margin: EdgeInsets.only(bottom: isLast ? 0 : 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Timeline indicator
-          Column(
-            children: [
-              Container(
-                width: 12,
-                height: 12,
-                decoration: BoxDecoration(
-                  color: _getStatusColor(status),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 2),
-                ),
-              ),
-              if (!isLast)
-                Container(width: 2, height: 60, color: Colors.grey.shade300),
-            ],
-          ),
-          const SizedBox(width: 16),
-          // Match card
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.06),
-                    blurRadius: 10,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(16),
-                  onTap: () {
-                    if (status == 'scheduled') {
-                      controller.navScheduled(match.id!);
-                    } else if (status == 'resume') {
-                      controller.navResume(match);
-                    } else {
-                      Get.toNamed(
-                        NAV_MATCH_VIEW,
-                        arguments: {"matchId": match.id},
-                      );
-                    }
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      children: [
-                        // Match header
-                        _buildHistoryMatchHeader(context, match),
-                        const SizedBox(height: 12),
-                        // Teams and scores
-                        _buildHistoryTeamsSection(context, match),
-                        const SizedBox(height: 12),
-                        // Result
-                        _buildHistoryResult(context, match, controller),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
+      child: UniversalMatchTile(
+        matchData: match,
+        displayMode: MatchTileDisplayMode.history,
+        onTap: () {
+          if (status == 'scheduled') {
+            controller.navScheduled(match.id!);
+          } else if (status == 'resume') {
+            controller.navResume(match);
+          } else if (status == 'completed') {
+            // For completed matches, navigate to match view instead of result page
+            if (match.id != null) {
+              final matchIdInt =
+                  match.id is int
+                      ? match.id
+                      : int.tryParse(match.id.toString()) ?? 0;
+
+              if (matchIdInt != null && matchIdInt > 0) {
+                Get.toNamed(NAV_MATCH_VIEW, arguments: {"matchId": matchIdInt});
+              } else {
+                Get.snackbar(
+                  'Navigation Error',
+                  'Invalid match ID. Cannot open match view.',
+                  snackPosition: SnackPosition.BOTTOM,
+                  backgroundColor: Colors.red.withOpacity(0.1),
+                  colorText: Colors.red,
+                );
+              }
+            }
+          } else {
+            // For other statuses, navigate to match view
+            Get.toNamed(NAV_MATCH_VIEW, arguments: {"matchId": match.id});
+          }
+        },
+        onHistoryTap: () {
+          // Navigate to match result/details
+          Get.toNamed(NAV_RESULT, arguments: {"matchId": match.id});
+        },
+        onDeleteTap: () {
+          // Show delete confirmation dialog
+          _showDeleteMatchConfirmation(context, match, controller);
+        },
+        showHistory:
+            status == 'completed', // Only show history for completed matches
+        showMatchIds: true, // Show match IDs in history
+        showTimeline: true, // Show timeline indicator
+        showDeleteButton: true, // Show delete button for all matches in history
+        statusColor: _getStatusColor(status),
       ),
     );
   }
@@ -420,206 +409,6 @@ class HistoryView extends StatelessWidget {
     }
   }
 
-  Widget _buildHistoryMatchHeader(BuildContext context, MatchModel match) {
-    final status = match.status?.toLowerCase() ?? 'unknown';
-    Color statusColor;
-    IconData statusIcon;
-
-    switch (status) {
-      case 'completed':
-        statusColor = Colors.green;
-        statusIcon = Icons.check_circle;
-        break;
-      case 'live':
-        statusColor = Colors.red;
-        statusIcon = Icons.radio_button_checked;
-        break;
-      case 'resume':
-        statusColor = Colors.grey;
-        statusIcon = Icons.play_arrow;
-        break;
-      case 'scheduled':
-        statusColor = Colors.grey;
-        statusIcon = Icons.calendar_month_rounded;
-        break;
-      default:
-        statusColor = Colors.grey;
-        statusIcon = Icons.schedule;
-    }
-
-    return Row(
-      children: [
-        Icon(statusIcon, size: 16, color: statusColor),
-        const SizedBox(width: 6),
-        Text(
-          status.toUpperCase(),
-          style: GoogleFonts.nunito(
-            fontWeight: FontWeight.w700,
-            fontSize: 12,
-            color: statusColor,
-            letterSpacing: 0.5,
-          ),
-        ),
-        const Spacer(),
-        Text(
-          'T20 Match',
-          style: GoogleFonts.nunito(
-            fontWeight: FontWeight.w600,
-            fontSize: 12,
-            color: Colors.grey.shade600,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildHistoryTeamsSection(BuildContext context, MatchModel match) {
-    return Column(
-      children: [
-        _buildHistoryTeamRow(
-          context,
-          match.matchState?.team1Innings?.teamName ??
-              match.team1Name ??
-              'Team 1',
-          match.matchState?.team1Innings?.scoreDisplay ?? '0/0',
-          match.matchState?.team1Innings?.overs?.toString() ?? '0.0',
-          Colors.deepOrange.shade400,
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'vs',
-          style: GoogleFonts.nunito(
-            color: Colors.grey.shade400,
-            fontWeight: FontWeight.w600,
-            fontSize: 12,
-          ),
-        ),
-        const SizedBox(height: 8),
-        _buildHistoryTeamRow(
-          context,
-          match.matchState?.team2Innings?.teamName ??
-              match.team2Name ??
-              'Team 2',
-          match.matchState?.team2Innings?.scoreDisplay ?? '0/0',
-          match.matchState?.team2Innings?.overs?.toString() ?? '0.0',
-          Colors.blue.shade400,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildHistoryTeamRow(
-    BuildContext context,
-    String teamName,
-    String score,
-    String overs,
-    Color teamColor,
-  ) {
-    return Row(
-      children: [
-        Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(color: teamColor, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            teamName,
-            style: GoogleFonts.nunito(
-              fontWeight: FontWeight.w600,
-              fontSize: 14,
-              color: Colors.grey.shade800,
-            ),
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-        Text(
-          '$score ($overs)',
-          style: GoogleFonts.nunito(
-            fontWeight: FontWeight.w600,
-            fontSize: 14,
-            color: Colors.grey.shade700,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildHistoryResult(
-    BuildContext context,
-    MatchModel match,
-    HistoryController controller,
-  ) {
-    final status = match.status?.toLowerCase() ?? 'unknown';
-    final isScheduledOrResume = status == 'scheduled' || status == 'resume';
-
-    return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.emoji_events, size: 14, color: Colors.amber.shade600),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              match.matchState?.resultDescription ??
-                  (status == 'scheduled'
-                      ? 'Match scheduled'
-                      : status == 'resume'
-                      ? 'Match paused'
-                      : status == 'live'
-                      ? 'Match in progress'
-                      : 'Match completed'),
-              style: GoogleFonts.nunito(
-                fontWeight: FontWeight.w600,
-                fontSize: 12,
-                color: Colors.grey.shade700,
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          if (isScheduledOrResume) const SizedBox(width: 8),
-          if (isScheduledOrResume)
-            ElevatedButton(
-              onPressed: () {
-                if (status == 'scheduled') {
-                  controller.navScheduled(match.id!);
-                } else if (status == 'resume') {
-                  controller.navResume(match);
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor:
-                    status == 'scheduled'
-                        ? Colors.blue.shade600
-                        : Colors.orange.shade600,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                minimumSize: Size.zero,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(6),
-                ),
-              ),
-              child: Text(
-                status == 'scheduled' ? 'Start' : 'Resume',
-                style: GoogleFonts.nunito(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 11,
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildLoadingView(BuildContext context) {
     return const FullScreenLoader(
       message: 'Loading match history...',
@@ -628,173 +417,193 @@ class HistoryView extends StatelessWidget {
   }
 
   Widget _buildErrorView(BuildContext context, HistoryController controller) {
-    return Center(
-      child: Container(
-        margin: const EdgeInsets.all(20),
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 10,
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.red.shade50,
-                borderRadius: BorderRadius.circular(50),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(
+        20,
+        20,
+        20,
+        100,
+      ), // Added bottom padding
+      child: Center(
+        child: Container(
+          margin: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.1),
+                blurRadius: 10,
               ),
-              child: Icon(
-                Icons.error_outline,
-                size: 48,
-                color: Colors.red.shade400,
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'Failed to load history',
-              style: GoogleFonts.nunito(
-                fontWeight: FontWeight.w700,
-                fontSize: 18,
-                color: Colors.grey.shade800,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Something went wrong while loading your match history.',
-              style: GoogleFonts.nunito(
-                fontWeight: FontWeight.w500,
-                fontSize: 14,
-                color: Colors.grey.shade600,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () async {
-                  await controller.getMatches();
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.deepOrange,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(50),
                 ),
-                child: Text(
-                  'Try Again',
-                  style: GoogleFonts.nunito(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 16,
-                  ),
+                child: Icon(
+                  Icons.error_outline,
+                  size: 48,
+                  color: Colors.red.shade400,
                 ),
               ),
-            ),
-          ],
+              const SizedBox(height: 20),
+              Text(
+                'Failed to load history',
+                style: GoogleFonts.nunito(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 18,
+                  color: Colors.grey.shade800,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Something went wrong while loading your match history.',
+                style: GoogleFonts.nunito(
+                  fontWeight: FontWeight.w500,
+                  fontSize: 14,
+                  color: Colors.grey.shade600,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    await controller.getMatches();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.deepOrange,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Text(
+                    'Try Again',
+                    style: GoogleFonts.nunito(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildEmptyView(BuildContext context, HistoryController controller) {
-    return Center(
-      child: Container(
-        margin: const EdgeInsets.all(20),
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 10,
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(50),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(
+        20,
+        20,
+        20,
+        100,
+      ), // Added bottom padding
+      child: Center(
+        child: Container(
+          margin: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.1),
+                blurRadius: 10,
               ),
-              child: Icon(Icons.history, size: 64, color: Colors.grey.shade400),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'No Match History',
-              style: GoogleFonts.nunito(
-                fontWeight: FontWeight.w800,
-                fontSize: 24,
-                color: Colors.grey.shade800,
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(50),
+                ),
+                child: Icon(
+                  Icons.history,
+                  size: 64,
+                  color: Colors.grey.shade400,
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'You haven\'t played any matches yet.\nStart your cricket journey by creating a match!',
-              style: GoogleFonts.nunito(
-                fontWeight: FontWeight.w500,
-                fontSize: 16,
-                color: Colors.grey.shade600,
+              const SizedBox(height: 24),
+              Text(
+                'No Match History',
+                style: GoogleFonts.nunito(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 24,
+                  color: Colors.grey.shade800,
+                ),
               ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () async {
-                      await controller.getMatches();
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.grey.shade100,
-                      foregroundColor: Colors.grey.shade600,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+              const SizedBox(height: 8),
+              Text(
+                'You haven\'t played any matches yet.\nStart your cricket journey by creating a match!',
+                style: GoogleFonts.nunito(
+                  fontWeight: FontWeight.w500,
+                  fontSize: 16,
+                  color: Colors.grey.shade600,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        await controller.refreshMatches();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.grey.shade100,
+                        foregroundColor: Colors.grey.shade600,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text(
+                        'Refresh',
+                        style: GoogleFonts.nunito(fontWeight: FontWeight.w600),
                       ),
                     ),
-                    child: Text(
-                      'Refresh',
-                      style: GoogleFonts.nunito(fontWeight: FontWeight.w600),
-                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => Get.toNamed(NAV_CREATE_MATCH),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.deepOrange,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => Get.toNamed(NAV_CREATE_MATCH),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.deepOrange,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text(
+                        'Create Match',
+                        style: GoogleFonts.nunito(fontWeight: FontWeight.w600),
                       ),
                     ),
-                    child: Text(
-                      'Create Match',
-                      style: GoogleFonts.nunito(fontWeight: FontWeight.w600),
-                    ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -806,153 +615,222 @@ class HistoryView extends StatelessWidget {
     HistoryController controller,
   ) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(16),
           onTap: () {
             controller.navigateToTournamentView(tournament);
           },
           child: Padding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Tournament header
+                // Tournament header - compact
                 Row(
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
+                        horizontal: 8,
+                        vertical: 4,
                       ),
                       decoration: BoxDecoration(
                         color: Colors.green.shade600,
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
                         'COMPLETED',
                         style: GoogleFonts.poppins(
                           color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12,
-                          letterSpacing: 0.5,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 10,
+                          letterSpacing: 0.3,
                         ),
                       ),
                     ),
+                    const SizedBox(width: 8),
+                    // Tournament format badge
+                    if (tournament.format != null &&
+                        tournament.format!.isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.deepOrange.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.deepOrange.shade200,
+                            width: 1,
+                          ),
+                        ),
+                        child: Text(
+                          tournament.format!.toUpperCase(),
+                          style: GoogleFonts.poppins(
+                            color: Colors.deepOrange.shade700,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 10,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ),
                     const Spacer(),
                     Icon(
                       Icons.emoji_events,
                       color: Colors.amber.shade600,
-                      size: 24,
+                      size: 20,
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
-                // Tournament name
+                const SizedBox(height: 12),
+                // Tournament name - smaller
                 Text(
                   tournament.name ?? 'Tournament',
                   style: GoogleFonts.poppins(
-                    fontSize: 18,
+                    fontSize: 16,
                     fontWeight: FontWeight.w700,
                     color: Colors.grey.shade800,
                   ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 12),
-                //todo: Winner info
-                // if (tournament['winner'] != null)
-                //   Container(
-                //     padding: const EdgeInsets.all(12),
-                //     decoration: BoxDecoration(
-                //       color: Colors.amber.shade50,
-                //       borderRadius: BorderRadius.circular(12),
-                //       border: Border.all(color: Colors.amber.shade200),
-                //     ),
-                //     child: Row(
-                //       children: [
-                //         Icon(
-                //           Icons.star,
-                //           color: Colors.amber.shade600,
-                //           size: 20,
-                //         ),
-                //         const SizedBox(width: 8),
-                //         Expanded(
-                //           child: Text(
-                //             'Winner: ${tournament['winner']}',
-                //             style: GoogleFonts.poppins(
-                //               fontSize: 14,
-                //               fontWeight: FontWeight.w600,
-                //               color: Colors.amber.shade800,
-                //             ),
-                //           ),
-                //         ),
-                //       ],
-                //     ),
-                //   ),
-                const SizedBox(height: 12),
-                //todo: Tournament details
-                // Row(
-                //   children: [
-                //     _buildTournamentStat(
-                //       Icons.groups,
-                //       '${tournament['teams']} Teams',
-                //     ),
-                //     const SizedBox(width: 16),
-                //     _buildTournamentStat(
-                //       Icons.sports_cricket,
-                //       '${tournament['matches']} Matches',
-                //     ),
-                //   ],
-                // ),
-                const SizedBox(height: 12),
-                // Duration and venue
+                const SizedBox(height: 10),
+                // Tournament info in compact format
                 Row(
                   children: [
-                    Icon(
-                      Icons.location_on,
-                      size: 16,
-                      color: Colors.grey.shade500,
-                    ),
-                    const SizedBox(width: 4),
+                    // Location info
                     Expanded(
-                      child: Text(
-                        tournament.location ?? 'TBD',
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          color: Colors.grey.shade600,
-                        ),
+                      flex: 3,
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.location_on_outlined,
+                            size: 14,
+                            color: Colors.grey.shade500,
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              tournament.location ?? 'TBD',
+                              style: GoogleFonts.poppins(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.grey.shade600,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Date info
+                    Expanded(
+                      flex: 2,
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.calendar_today_outlined,
+                            size: 14,
+                            color: Colors.grey.shade500,
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              _formatTournamentDateRange(
+                                tournament.startDate,
+                                tournament.endDate,
+                              ),
+                              style: GoogleFonts.poppins(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.grey.shade600,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 8),
+                // Action row with view details and delete button
                 Row(
                   children: [
-                    Icon(
-                      Icons.date_range,
-                      size: 16,
-                      color: Colors.grey.shade500,
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: Colors.grey.shade200,
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.visibility_outlined,
+                              size: 14,
+                              color: Colors.deepOrange.shade600,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'View Details',
+                              style: GoogleFonts.poppins(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.deepOrange.shade600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                    const SizedBox(width: 4),
-                    Text(
-                      tournament.startDate != null && tournament.endDate != null
-                          ? '${DateFormat('MMM d').format(tournament.startDate!)} - ${DateFormat('MMM d, yyyy').format(tournament.endDate!)}'
-                          : 'Date TBD',
-                      style: GoogleFonts.poppins(
-                        fontSize: 12,
-                        color: Colors.grey.shade600,
+                    const SizedBox(width: 8),
+                    // Delete button
+                    GestureDetector(
+                      onTap:
+                          () => _showDeleteTournamentConfirmation(
+                            context,
+                            tournament,
+                            controller,
+                          ),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: Colors.red.withOpacity(0.3),
+                            width: 1,
+                          ),
+                        ),
+                        child: Icon(
+                          Icons.delete_outline,
+                          size: 16,
+                          color: Colors.red.shade600,
+                        ),
                       ),
                     ),
                   ],
@@ -963,6 +841,24 @@ class HistoryView extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _formatTournamentDateRange(DateTime? startDate, DateTime? endDate) {
+    if (startDate == null || endDate == null) {
+      return 'Date TBD';
+    }
+
+    final start = DateFormat('MMM d').format(startDate);
+    final end = DateFormat('MMM d, yyyy').format(endDate);
+
+    // If same month and year, show "Jan 15-20, 2024"
+    if (startDate.year == endDate.year && startDate.month == endDate.month) {
+      final startDay = startDate.day;
+      final endFormatted = DateFormat('d, yyyy').format(endDate);
+      return '$start-$endFormatted';
+    }
+
+    return '$start - $end';
   }
 
   Widget _buildTournamentStat(IconData icon, String text) {
@@ -989,7 +885,12 @@ class HistoryView extends StatelessWidget {
     return Center(
       child: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.all(32),
+          padding: const EdgeInsets.fromLTRB(
+            32,
+            32,
+            32,
+            132,
+          ), // Added extra bottom padding
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -1034,6 +935,220 @@ class HistoryView extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  /// Show confirmation dialog for match deletion
+  void _showDeleteMatchConfirmation(
+    BuildContext context,
+    MatchModel match,
+    HistoryController controller,
+  ) {
+    final team1Name =
+        match.matchState?.team1Innings?.teamName ?? match.team1Name ?? 'Team 1';
+    final team2Name =
+        match.matchState?.team2Innings?.teamName ?? match.team2Name ?? 'Team 2';
+    final matchTitle = '$team1Name vs $team2Name';
+
+    Get.dialog(
+      AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
+            const SizedBox(width: 8),
+            Text(
+              'Delete Match',
+              style: GoogleFonts.nunito(
+                fontWeight: FontWeight.w700,
+                fontSize: 18,
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Are you sure you want to delete this match?',
+              style: GoogleFonts.nunito(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.sports_cricket,
+                    color: Colors.deepOrange,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      matchTitle,
+                      style: GoogleFonts.nunito(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'This action cannot be undone.',
+              style: GoogleFonts.nunito(
+                fontSize: 14,
+                color: Colors.grey.shade600,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.nunito(
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade600,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Get.back();
+              controller.deleteMatch(match);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: Text(
+              'Delete',
+              style: GoogleFonts.nunito(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Show confirmation dialog for tournament deletion
+  void _showDeleteTournamentConfirmation(
+    BuildContext context,
+    CreateTournamentModel tournament,
+    HistoryController controller,
+  ) {
+    Get.dialog(
+      AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
+            const SizedBox(width: 8),
+            Text(
+              'Delete Tournament',
+              style: GoogleFonts.nunito(
+                fontWeight: FontWeight.w700,
+                fontSize: 18,
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Are you sure you want to delete this tournament?',
+              style: GoogleFonts.nunito(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.emoji_events,
+                    color: Colors.amber.shade600,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      tournament.name ?? 'Tournament',
+                      style: GoogleFonts.nunito(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'This will delete all associated matches and data. This action cannot be undone.',
+              style: GoogleFonts.nunito(
+                fontSize: 14,
+                color: Colors.grey.shade600,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.nunito(
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade600,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Get.back();
+              controller.deleteTournament(tournament);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: Text(
+              'Delete',
+              style: GoogleFonts.nunito(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
       ),
     );
   }

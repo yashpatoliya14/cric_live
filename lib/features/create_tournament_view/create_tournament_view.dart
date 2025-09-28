@@ -8,8 +8,14 @@ class CreateTournamentView extends StatelessWidget {
     final controller = Get.find<CreateTournamentController>();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Create Tournament'), elevation: 0),
-      body: Obx(() {
+      appBar: const CommonAppHeader(
+        title: 'Create Tournament',
+        subtitle: 'Organize your cricket tournament',
+        leadingIcon: Icons.emoji_events,
+      ),
+      body: SafeArea(
+        top: false,
+        child: Obx(() {
         if (controller.isLoading.value) {
           return const FullScreenLoader(message: 'Loading users and teams...');
         }
@@ -36,7 +42,8 @@ class CreateTournamentView extends StatelessWidget {
             ],
           ),
         );
-      }),
+        }),
+      ),
     );
   }
 
@@ -149,15 +156,91 @@ class CreateTournamentView extends StatelessWidget {
               'Select Scorers',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: controller.scorerSearchController,
-              decoration: const InputDecoration(
-                labelText: 'Search users...',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.search),
-                hintText: 'Type to search by name, username, or email',
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue.shade200),
               ),
+              child: const Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.blue, size: 20),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Type a name, username, or email and click Search to find users.',
+                      style: TextStyle(color: Colors.blue, fontSize: 13),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    controller: controller.scorerSearchController,
+                    decoration: const InputDecoration(
+                      labelText: 'Search users...',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.search),
+                      hintText: 'Type to search by name, username, or email',
+                    ),
+                    onFieldSubmitted: (_) => controller.searchUsers(),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Obx(
+                  () => ElevatedButton.icon(
+                    onPressed:
+                        controller.isSearching.value
+                            ? null
+                            : controller.searchUsers,
+                    icon:
+                        controller.isSearching.value
+                            ? SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.white,
+                                ),
+                              ),
+                            )
+                            : Icon(Icons.search, size: 18),
+                    label: Text(
+                      controller.isSearching.value ? 'Searching...' : 'Search',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 16,
+                      ),
+                    ),
+                  ),
+                ),
+                Obx(
+                  () => controller.searchedUsers.isNotEmpty ||
+                      controller.lastSearchQuery.value.isNotEmpty
+                      ? Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const SizedBox(width: 4),
+                          IconButton(
+                            onPressed: controller.clearSearch,
+                            icon: Icon(Icons.clear, size: 20),
+                            tooltip: 'Clear search',
+                          ),
+                        ],
+                      )
+                      : const SizedBox.shrink(),
+                ),
+              ],
             ),
             const SizedBox(height: 12),
             _buildUserSuggestions(controller),
@@ -171,35 +254,85 @@ class CreateTournamentView extends StatelessWidget {
 
   Widget _buildUserSuggestions(CreateTournamentController controller) {
     return Obx(() {
-      if (controller.filteredUsers.isNotEmpty) {
+      final List<UserModel> users = controller.searchedUsers;
+      final bool isLoading = controller.isSearching.value;
+      final String lastQuery = controller.lastSearchQuery.value;
+
+      if (isLoading) {
         return Container(
-          height: 200,
+          height: 120,
+          alignment: Alignment.center,
+          child: const CircularProgressIndicator(),
+        );
+      }
+
+      if (users.isEmpty && lastQuery.isNotEmpty) {
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade50,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.grey.shade300),
+          ),
+          child: const Row(
+            children: [
+              Icon(Icons.info_outline, color: Colors.grey),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'No users found. Try a different search.',
+                  style: TextStyle(color: Colors.grey),
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+
+      if (users.isNotEmpty) {
+        return Container(
+          height: 240,
           decoration: BoxDecoration(
             border: Border.all(color: Colors.grey.shade300),
             borderRadius: BorderRadius.circular(8),
           ),
           child: ListView.builder(
-            itemCount: controller.filteredUsers.length,
+            itemCount: users.length,
             itemBuilder: (context, index) {
-              final user = controller.filteredUsers[index];
-              final isSelected = controller.selectedScorers.any(
-                (scorer) => scorer.uid == user.uid,
-              );
+              final user = users[index];
+              final isSelected = controller.isUserSelected(user);
 
               return ListTile(
                 leading: CircleAvatar(
                   child: Text(
-                    user.displayName.isNotEmpty
-                        ? user.displayName[0].toUpperCase()
-                        : 'U',
+                    _getAvatarText(user),
                   ),
                 ),
-                title: Text(user.fullDisplayName),
-                subtitle: Text(user.email ?? ''),
+                title: Text(
+                  user.fullDisplayName.isNotEmpty 
+                      ? user.fullDisplayName 
+                      : 'Unknown User (${user.userName ?? 'No username'})'
+                ),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(user.email ?? 'No email'),
+                    if (user.userName != null && user.userName!.isNotEmpty)
+                      Text('@${user.userName}', 
+                        style: TextStyle(
+                          fontSize: 12, 
+                          color: Colors.grey.shade600
+                        )
+                      ),
+                  ],
+                ),
                 trailing:
                     isSelected
-                        ? const Icon(Icons.check, color: Colors.green)
-                        : null,
+                        ? const Icon(Icons.check_circle, color: Colors.green)
+                        : const Icon(
+                          Icons.add_circle_outline,
+                          color: Colors.blue,
+                        ),
                 onTap: isSelected ? null : () => controller.addScorer(user),
                 enabled: !isSelected,
               );
@@ -207,6 +340,7 @@ class CreateTournamentView extends StatelessWidget {
           ),
         );
       }
+
       return const SizedBox.shrink();
     });
   }
@@ -243,9 +377,7 @@ class CreateTournamentView extends StatelessWidget {
                   return Chip(
                     avatar: CircleAvatar(
                       child: Text(
-                        user.displayName.isNotEmpty
-                            ? user.displayName[0].toUpperCase()
-                            : 'U',
+                        _getAvatarText(user),
                       ),
                     ),
                     label: Text(user.fullDisplayName),
@@ -500,5 +632,19 @@ class CreateTournamentView extends StatelessWidget {
         }
       }
     }
+  }
+
+  /// Get appropriate text for user avatar
+  String _getAvatarText(UserModel user) {
+    if (user.firstName != null && user.firstName!.isNotEmpty) {
+      return user.firstName![0].toUpperCase();
+    }
+    if (user.lastName != null && user.lastName!.isNotEmpty) {
+      return user.lastName![0].toUpperCase();
+    }
+    if (user.userName != null && user.userName!.isNotEmpty) {
+      return user.userName![0].toUpperCase();
+    }
+    return 'U';
   }
 }

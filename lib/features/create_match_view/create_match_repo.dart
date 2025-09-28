@@ -2,10 +2,10 @@ import 'package:cric_live/utils/import_exports.dart';
 
 class CreateMatchRepo {
   final ApiServices _services = ApiServices();
-  final ScoreboardRepo scoreboardRepo = ScoreboardRepo();
+  final ScoreboardRepository scoreboardRepo = ScoreboardRepository();
 
   /// create a match in locally
-  Future<int> createMatch(CreateMatchModel data) async {
+  Future<int> createMatch(MatchModel data) async {
     try {
       final Database db = await MyDatabase().database;
       return await db.insert(TBL_MATCHES, data.toMap());
@@ -16,7 +16,7 @@ class CreateMatchRepo {
   }
 
   /// function is used for get match wherever ** use scheduled a match then this function is called **
-  Future<CreateMatchModel?> getMatchById(int matchId) async {
+  Future<MatchModel?> getMatchById(int matchId) async {
     try {
       // Check internet connection first
       bool hasInternet = await InternetRequiredService.checkForMatchCreation();
@@ -29,7 +29,7 @@ class CreateMatchRepo {
       );
 
       if (result["match"] != null) {
-        return CreateMatchModel.fromMap(result["match"]);
+        return MatchModel.fromMap(result["match"]);
       } else {
         log("⚠️ match data missing in response: $result");
       }
@@ -39,7 +39,7 @@ class CreateMatchRepo {
     return null;
   }
 
-  createMatchOnline(CreateMatchModel match) async {
+  createMatchOnline(MatchModel match) async {
     try {
       // Check internet connection first
       bool hasInternet = await InternetRequiredService.checkForMatchCreation();
@@ -76,7 +76,7 @@ class CreateMatchRepo {
     }
   }
 
-  updateMatchOnline({required CreateMatchModel model}) async {
+  updateMatchOnline({required MatchModel model}) async {
     try {
       // Check internet connection first
       bool hasInternet = await InternetRequiredService.checkForMatchCreation();
@@ -84,7 +84,7 @@ class CreateMatchRepo {
         return; // User cancelled or still no internet
       }
 
-      Map<String, dynamic> result = await _services.put(
+      await _services.put(
         "/CL_Matches/UpdateMatch/${model.matchIdOnline}",
         model.toMap(),
       );

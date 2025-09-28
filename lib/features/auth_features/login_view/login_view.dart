@@ -1,7 +1,4 @@
-import 'package:cric_live/common_widgets/loader.dart';
 import 'package:cric_live/utils/import_exports.dart';
-
-import 'login_controller.dart';
 
 class LoginView extends GetView<LoginController> {
   const LoginView({super.key});
@@ -22,6 +19,7 @@ class LoginView extends GetView<LoginController> {
           ),
         ),
         child: SafeArea(
+          top: false,
           child: Center(
             child: SingleChildScrollView(
               padding: EdgeInsets.symmetric(horizontal: 24.w),

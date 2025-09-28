@@ -1,9 +1,21 @@
-import 'package:cric_live/features/search_view/search_screen_controller.dart';
 import 'package:cric_live/utils/import_exports.dart';
 
 class SearchScreenBinding extends Bindings {
   @override
   void dependencies() {
-    Get.lazyPut(() => SearchScreenController());
+    // Register API services if not already registered
+    if (!Get.isRegistered<ApiServices>()) {
+      Get.put(ApiServices(), permanent: true);
+    }
+    
+    // Register search repository with proper dependency injection
+    Get.lazyPut<ISearchRepository>(() => SearchRepositoryImpl(
+      apiServices: Get.find<ApiServices>(),
+    ));
+    
+    // Register search controller with proper dependency injection
+    Get.lazyPut<SearchScreenController>(() => SearchScreenController(
+      searchRepository: Get.find<ISearchRepository>(),
+    ));
   }
 }

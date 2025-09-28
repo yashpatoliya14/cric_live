@@ -1,3 +1,5 @@
+import 'package:cric_live/features/feedback_view/feedback_view.dart';
+import 'package:cric_live/utils/bindings/feedback_binding.dart';
 import 'package:cric_live/utils/import_exports.dart';
 
 Future<void> main() async {
@@ -17,9 +19,6 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    SharedPreferences preferences = Get.find<SharedPreferences>();
-    String? token = preferences.getString("token");
-
     return ScreenUtilInit(
       designSize: const Size(375, 812),
       builder:
@@ -102,13 +101,31 @@ class MyApp extends StatelessWidget {
             ),
             darkTheme: ThemeData(),
             themeMode: ThemeMode.light,
-            initialRoute: token == null ? NAV_LOGIN : NAV_DASHBOARD_PAGE,
-            initialBinding: token == null ? LoginBinding() : DashboardBinding(),
+            initialRoute: NAV_SPLASH_SCREEN,
+            initialBinding: SplashScreenBinding(),
             getPages: [
+              GetPage(
+                name: NAV_SPLASH_SCREEN,
+                page: () => const SplashScreenView(),
+                binding: SplashScreenBinding(),
+                transition: Transition.fade,
+              ),
               GetPage(
                 name: NAV_TOURNAMENT_DISPLAY,
                 page: () => TournamentView(),
                 binding: TournamentBinding(),
+                transition: Transition.fade,
+              ),
+              GetPage(
+                name: NAV_CREATE_TEAM,
+                page: () => CreateTeamView(),
+                binding: CreateTeamBinding(),
+                transition: Transition.fade,
+              ),
+              GetPage(
+                name: NAV_FEEDBACK,
+                page: () => FeedbackView(),
+                binding: FeedbackBinding(),
                 transition: Transition.fade,
               ),
               GetPage(
@@ -119,12 +136,6 @@ class MyApp extends StatelessWidget {
                 }),
               ),
 
-              GetPage(
-                name: NAV_MATCH_VIEW,
-                page: () => MatchView(),
-                binding: MatchBinding(),
-                transition: Transition.fade,
-              ),
               GetPage(
                 name: NAV_OTP_SCREEN,
                 page: () => OtpScreenView(),
@@ -164,17 +175,12 @@ class MyApp extends StatelessWidget {
               GetPage(
                 name: NAV_SEARCH,
                 page: () => SearchScreenView(),
+                binding: SearchScreenBinding(),
                 transition: Transition.fade,
               ),
               GetPage(
                 name: NAV_SELECT_TEAM,
                 page: () => SelectTeamView(),
-                transition: Transition.fade,
-              ),
-              GetPage(
-                name: NAV_CREATE_TEAM,
-                page: () => CreateTeamView(),
-                binding: CreateTeamBinding(),
                 transition: Transition.fade,
               ),
               GetPage(
@@ -227,6 +233,12 @@ class MyApp extends StatelessWidget {
                 binding: ResetPasswordBinding(),
                 transition: Transition.leftToRight,
               ),
+              // GetPage(
+              //   name: NAV_FEEDBACK,
+              //   page: () => const FeedbackView(),
+              //   binding: FeedbackBinding(),
+              //   transition: Transition.rightToLeft,
+              // ),
             ],
           ),
     );

@@ -1,4 +1,5 @@
 import 'package:cric_live/utils/import_exports.dart';
+import 'package:http/http.dart' as http;
 
 class ConnectivityService {
   static ConnectivityService? _instance;
@@ -9,34 +10,99 @@ class ConnectivityService {
     return _instance!;
   }
 
+  /// Temporary bypass flag for testing - set to true to skip connectivity checks
+  static const bool _bypassConnectivityCheck = false;
+
   /// Check if device has active internet connection
   Future<bool> hasInternetConnection() async {
+    // Temporary bypass for testing
+    if (_bypassConnectivityCheck) {
+      log('BYPASSING connectivity check for testing');
+      return true;
+    }
+    // Method 1: Quick connectivity check
     try {
-      // Method 1: Try DNS lookup to Google
-      final List<InternetAddress> result = await InternetAddress.lookup(
+      final connectivityResult = await Connectivity().checkConnectivity();
+
+      // If no connectivity at all, return false immediately
+      if (connectivityResult == ConnectivityResult.none) {
+        log('No network connectivity detected');
+        return false;
+      }
+
+      log('Network connectivity detected: $connectivityResult');
+    } catch (e) {
+      log('Connectivity check error: $e');
+      // Don't return false here, continue with other methods
+    }
+
+    // Method 2: Try multiple HTTP endpoints with shorter timeout
+    final List<String> testUrls = [
+      'https://www.google.com',
+      'https://httpbin.org/status/200',
+      'https://jsonplaceholder.typicode.com/posts/1',
+    ];
+
+    for (String url in testUrls) {
+      try {
+        final response = await http
+            .get(
+              Uri.parse(url),
+              headers: {
+                'User-Agent': 'CricLive/1.0',
+                'Accept': 'text/html,application/json',
+              },
+            )
+            .timeout(const Duration(seconds: 5));
+
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          log('HTTP request successful: $url - Status: ${response.statusCode}');
+          return true;
+        }
+      } catch (e) {
+        log('HTTP request failed for $url: $e');
+        continue; // Try next URL
+      }
+    }
+
+    // Method 3: Try DNS lookup as fallback
+    try {
+      final result = await InternetAddress.lookup(
         'google.com',
-      ).timeout(const Duration(seconds: 5));
+      ).timeout(const Duration(seconds: 4));
 
       if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+        log('DNS lookup successful');
         return true;
       }
     } catch (e) {
       log('DNS lookup failed: $e');
     }
 
-    try {
-      // Method 2: Try connecting to a reliable server
-      final socket = await Socket.connect(
-        '8.8.8.8',
-        53,
-        timeout: const Duration(seconds: 5),
-      );
-      socket.destroy();
-      return true;
-    } catch (e) {
-      log('Socket connection failed: $e');
+    // Method 4: Try socket connection with multiple servers
+    final List<Map<String, dynamic>> socketTests = [
+      {'host': '8.8.8.8', 'port': 53}, // Google DNS
+      {'host': '1.1.1.1', 'port': 53}, // Cloudflare DNS
+      {'host': 'google.com', 'port': 80}, // HTTP port
+    ];
+
+    for (var test in socketTests) {
+      try {
+        final socket = await Socket.connect(
+          test['host'] as String,
+          test['port'] as int,
+          timeout: const Duration(seconds: 4),
+        );
+        socket.destroy();
+        log('Socket connection successful: ${test['host']}:${test['port']}');
+        return true;
+      } catch (e) {
+        log('Socket connection failed for ${test['host']}:${test['port']}: $e');
+        continue; // Try next socket test
+      }
     }
 
+    log('All connectivity tests failed');
     return false;
   }
 
@@ -148,11 +214,21 @@ class ConnectivityService {
     String? customTitle,
     String? customMessage,
     String? customAction,
+    bool enableDebug = false,
   }) async {
-    if (await hasInternetConnection()) {
+    // Run debug if requested
+    if (enableDebug) {
+      await debugConnectivity();
+    }
+
+    bool hasConnection = await hasInternetConnection();
+
+    if (hasConnection) {
+      log('Internet connection confirmed');
       return true;
     }
 
+    log('No internet connection detected, showing dialog');
     return await showInternetRequiredDialog(
       title: customTitle ?? "Internet Connection Required",
       message:
@@ -160,6 +236,66 @@ class ConnectivityService {
           "This action requires an active internet connection. Please check your connection and try again.",
       customAction: customAction,
     );
+  }
+
+  /// Debug function to test connectivity step by step
+  Future<void> debugConnectivity() async {
+    log('=== CONNECTIVITY DEBUG START ===');
+
+    // Test 1: Basic connectivity check
+    try {
+      final connectivityResults = await Connectivity().checkConnectivity();
+      log('Connectivity results: $connectivityResults');
+    } catch (e) {
+      log('Connectivity check error: $e');
+    }
+
+    // Test 2: HTTP requests
+    final testUrls = [
+      'https://www.google.com',
+      'https://httpbin.org/status/200',
+    ];
+    for (String url in testUrls) {
+      try {
+        final response = await http
+            .get(Uri.parse(url))
+            .timeout(const Duration(seconds: 3));
+        log('HTTP $url: ${response.statusCode}');
+      } catch (e) {
+        log('HTTP $url failed: $e');
+      }
+    }
+
+    // Test 3: DNS lookup
+    try {
+      final result = await InternetAddress.lookup(
+        'google.com',
+      ).timeout(const Duration(seconds: 3));
+      log('DNS lookup result: ${result.length} addresses');
+    } catch (e) {
+      log('DNS lookup error: $e');
+    }
+
+    // Test 4: Socket connections
+    final socketTests = [
+      {'host': '8.8.8.8', 'port': 53},
+      {'host': '1.1.1.1', 'port': 53},
+    ];
+    for (var test in socketTests) {
+      try {
+        final socket = await Socket.connect(
+          test['host'] as String,
+          test['port'] as int,
+          timeout: const Duration(seconds: 3),
+        );
+        socket.destroy();
+        log('Socket ${test['host']}:${test['port']}: SUCCESS');
+      } catch (e) {
+        log('Socket ${test['host']}:${test['port']}: $e');
+      }
+    }
+
+    log('=== CONNECTIVITY DEBUG END ===');
   }
 
   /// Show a snackbar for internet connection status

@@ -1,4 +1,5 @@
 import 'package:cric_live/utils/import_exports.dart';
+import 'dart:math' as math;
 
 class AuthService {
   late ApiServices _apiServices;
@@ -140,7 +141,8 @@ class AuthService {
         "/CL_Users/VerifyOtp",
         model.toJson(),
       );
-
+      final prefs = Get.find<SharedPreferences>();
+      prefs.setString("token", result["token"]);
       getSnackBar(
         title: "Otp Verification Success",
         message: result["message"] ?? "OTP verified successfully",
@@ -168,19 +170,34 @@ class AuthService {
     try {
       final prefs = Get.find<SharedPreferences>();
       String? token = prefs.getString("token");
-
+      
+      log('🔑 Token Check Debug:');
+      log('   - Token exists: ${token != null}');
+      
       if (token == null) {
+        log('❌ No token found in SharedPreferences');
         throw Exception("Token not found");
       }
-
-      if (JwtDecoder.isExpired(token)) {
+      
+      log('   - Token (first 50 chars): ${token.substring(0, math.min(50, token.length))}...');
+      
+      bool isExpired = JwtDecoder.isExpired(token);
+      log('   - Token expired: $isExpired');
+      
+      if (isExpired) {
+        log('❌ Token expired, logging out user');
         logout();
+        return null;
       } else {
+        log('✅ Token valid, decoding...');
         Map<String, dynamic> data = JwtDecoder.decode(token);
-        return TokenModel.fromJson(data);
+        log('   - Decoded data: $data');
+        TokenModel model = TokenModel.fromJson(data);
+        log('   - User ID: ${model.uid}, Email: ${model.email}');
+        return model;
       }
     } catch (e) {
-      log('''::::fetchInfoFromToken:::::$e''');
+      log('❌ fetchInfoFromToken error: $e');
     }
     return null;
   }

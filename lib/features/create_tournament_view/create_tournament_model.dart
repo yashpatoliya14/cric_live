@@ -40,18 +40,15 @@ class CreateTournamentModel {
   }
 
   static DateTime? _parseDate(String dateString) {
-    if (dateString is String) {
-      try {
-        final format = DateFormat('dd-MM-yyyy');
-        return format.parse(dateString);
-      } catch (e) {
-        // If the custom format fails, you can optionally try the default parser
-        // or just return null. Returning null is often the safest.
-        // print('Could not parse date: $dateString'); // Optional: for debugging
-        return null;
-      }
+    try {
+      final format = DateFormat('dd-MM-yyyy');
+      return format.parse(dateString);
+    } catch (e) {
+      // If the custom format fails, you can optionally try the default parser
+      // or just return null. Returning null is often the safest.
+      // print('Could not parse date: $dateString'); // Optional: for debugging
+      return null;
     }
-    return null;
   }
 
   factory CreateTournamentModel.fromJson(Map<String, dynamic> json) {
@@ -120,6 +117,7 @@ class TournamentTeamModel {
 }
 
 class UserModel extends SignupModel {
+  @override
   int? uid;
   String? userName;
   int? isVerified;
@@ -178,7 +176,8 @@ class UserModel extends SignupModel {
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
       uid: json['uid'] as int?,
-      userName: json['userName'] as String?,
+      // Handle both 'userName' and 'username' from API
+      userName: json['userName'] as String? ?? json['username'] as String?,
       email: json['email'] as String?,
       password: json['password'] as String?,
       firstName: json['firstName'] as String?,

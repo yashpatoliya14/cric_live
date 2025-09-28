@@ -1,4 +1,3 @@
-import 'package:cric_live/services/auth/auth_service.dart';
 import 'package:cric_live/utils/import_exports.dart';
 
 class ForgotPasswordEmailController extends GetxController {

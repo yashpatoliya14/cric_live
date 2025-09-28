@@ -13,8 +13,6 @@ class ResultController extends GetxController {
   // Getters for easy access
   TeamInningsResultModel? get team1Innings => matchResult.value?.team1Innings;
   TeamInningsResultModel? get team2Innings => matchResult.value?.team2Innings;
-  List<OverSummaryModel> get team1Overs => matchResult.value?.team1Overs ?? [];
-  List<OverSummaryModel> get team2Overs => matchResult.value?.team2Overs ?? [];
   String get matchTitle => matchResult.value?.matchTitle ?? 'Match Result';
   String get resultSummary => matchResult.value?.matchSummary ?? '';
 
@@ -86,14 +84,6 @@ class ResultController extends GetxController {
     }
   }
 
-  /// Get overs for a specific team
-  List<OverSummaryModel> getTeamOvers(int inningNo) {
-    if (inningNo == 1) {
-      return team1Overs;
-    } else {
-      return team2Overs;
-    }
-  }
 
   /// Get team name by innings
   String getTeamName(int inningNo) {

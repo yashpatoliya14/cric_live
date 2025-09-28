@@ -1,4 +1,3 @@
-
 import 'package:cric_live/utils/import_exports.dart';
 
 class ShiftInningController extends GetxController {
@@ -18,8 +17,8 @@ class ShiftInningController extends GetxController {
   int get battingTeamId => _battingTeamId;
   int get bowlingTeamId => _bowlingTeamId;
 
-  CreateMatchModel? _matchModel;
-  CreateMatchModel? get matchModel => _matchModel;
+  MatchModel? _matchModel;
+  MatchModel? get matchModel => _matchModel;
 
   // Rx variables
   final RxString team1 = "".obs;
@@ -113,12 +112,21 @@ class ShiftInningController extends GetxController {
     try {
       isSelectingBatsmen.value = true;
 
+      // Get current selected player IDs if any
+      List<int> currentSelectedIds = [];
+      if (strikerBatsmanId.value > 0) currentSelectedIds.add(strikerBatsmanId.value);
+      if (nonStrikerBatsmanId.value > 0) currentSelectedIds.add(nonStrikerBatsmanId.value);
+      if (currentSelectedIds.isNotEmpty) {
+        log('🔄 Passing currently selected batsman IDs: $currentSelectedIds');
+      }
+
       final dynamic result = await Get.toNamed(
         NAV_CHOOSE_PLAYER,
         arguments: {
           "teamId": _battingTeamId,
           "limit": 2,
           "title": "Select Opening Batsmen for $battingTeamName",
+          "selectedPlayerIds": currentSelectedIds,
         },
       );
 
@@ -172,7 +180,7 @@ class ShiftInningController extends GetxController {
       strikerBatsman.value = striker.playerName ?? "Unknown Player";
       nonStrikerBatsman.value = nonStriker.playerName ?? "Unknown Player";
 
-      _showSuccess("Opening batsmen selected successfully!");
+      log('Opening batsmen selected successfully');
     } catch (e) {
       _showError("Failed to select batsmen: ${e.toString()}");
       log('Error selecting batsmen: $e');
@@ -186,12 +194,20 @@ class ShiftInningController extends GetxController {
     try {
       isSelectingBowler.value = true;
 
+      // Get current selected bowler ID if any
+      List<int> currentSelectedIds = [];
+      if (bowlerId.value > 0) {
+        currentSelectedIds.add(bowlerId.value);
+        log('🔄 Passing currently selected bowler ID: $currentSelectedIds');
+      }
+
       final dynamic result = await Get.toNamed(
         NAV_CHOOSE_PLAYER,
         arguments: {
           "teamId": _bowlingTeamId,
           "limit": 1,
           "title": "Select Opening Bowler for $bowlingTeamName",
+          "selectedPlayerIds": currentSelectedIds,
         },
       );
 
@@ -233,7 +249,7 @@ class ShiftInningController extends GetxController {
       bowlerId.value = selectedBowler.teamPlayerId!;
       bowler.value = selectedBowler.playerName ?? "Unknown Player";
 
-      _showSuccess("Opening bowler selected successfully!");
+      log('Opening bowler selected successfully');
     } catch (e) {
       _showError("Failed to select bowler: ${e.toString()}");
       log('Error selecting bowler: $e');
@@ -242,29 +258,71 @@ class ShiftInningController extends GetxController {
     }
   }
 
-  /// Start the second inning with validation
+  /// Start the second inning - force start without requiring all players
   Future<void> shiftInning() async {
-    if (!isReadyToStart) {
-      _showError(
-        "Please select all required players before starting the inning.",
-      );
-      return;
-    }
-
+    // Force start the inning - no validation required
+    log('Force starting second inning - players can be selected later');
+    
     getDialogBox(
       onMain: () async {
         try {
           isLoading.value = true;
 
+          // Get default players if not selected
+          int actualStrikerId = strikerBatsmanId.value;
+          int actualNonStrikerId = nonStrikerBatsmanId.value;
+          int actualBowlerId = bowlerId.value;
+          
+          // If players are not selected, get any available players from teams
+          if (actualStrikerId <= 0 || actualNonStrikerId <= 0) {
+            try {
+              // Get first two players from batting team as defaults
+              final choosePlayerRepo = ChoosePlayerRepo();
+              final battingPlayers = await choosePlayerRepo.getPlayersByTeamId(_battingTeamId);
+              if (battingPlayers != null && battingPlayers.isNotEmpty) {
+                if (actualStrikerId <= 0) {
+                  actualStrikerId = battingPlayers[0].teamPlayerId ?? 0;
+                  strikerBatsmanId.value = actualStrikerId;
+                  strikerBatsman.value = battingPlayers[0].playerName ?? "Player 1";
+                  log('Auto-selected striker: ${strikerBatsman.value} (ID: $actualStrikerId)');
+                }
+                if (actualNonStrikerId <= 0 && battingPlayers.length > 1) {
+                  actualNonStrikerId = battingPlayers[1].teamPlayerId ?? 0;
+                  nonStrikerBatsmanId.value = actualNonStrikerId;
+                  nonStrikerBatsman.value = battingPlayers[1].playerName ?? "Player 2";
+                  log('Auto-selected non-striker: ${nonStrikerBatsman.value} (ID: $actualNonStrikerId)');
+                }
+              }
+            } catch (e) {
+              log('Warning: Could not get default batting players: $e');
+            }
+          }
+          
+          if (actualBowlerId <= 0) {
+            try {
+              // Get first player from bowling team as default
+              final choosePlayerRepo = ChoosePlayerRepo();
+              final bowlingPlayers = await choosePlayerRepo.getPlayersByTeamId(_bowlingTeamId);
+              if (bowlingPlayers != null && bowlingPlayers.isNotEmpty) {
+                actualBowlerId = bowlingPlayers[0].teamPlayerId ?? 0;
+                bowlerId.value = actualBowlerId;
+                bowler.value = bowlingPlayers[0].playerName ?? "Bowler 1";
+                log('Auto-selected bowler: ${bowler.value} (ID: $actualBowlerId)');
+              }
+            } catch (e) {
+              log('Warning: Could not get default bowling player: $e');
+            }
+          }
+
           await _repo.shiftInning(
             matchId: matchId,
-            currentBattingTeamId: _battingTeamId,
-            strikerId: strikerBatsmanId.value,
-            nonStrikerId: nonStrikerBatsmanId.value,
-            bowlerId: bowlerId.value,
+            nextBattingTeamId: _battingTeamId,
+            strikerId: actualStrikerId,
+            nonStrikerId: actualNonStrikerId,
+            bowlerId: actualBowlerId,
           );
 
-          _showSuccess("Second inning started successfully!");
+          log('Second inning started successfully');
 
           // Navigate to scoreboard
           await Future.delayed(const Duration(milliseconds: 500));
@@ -282,7 +340,7 @@ class ShiftInningController extends GetxController {
       },
       title: "Start Second Inning?",
       closeText: "Cancel",
-      mainText: "Start Inning",
+      mainText: "Start",
     );
   }
 
@@ -309,18 +367,6 @@ class ShiftInningController extends GetxController {
     );
   }
 
-  /// Show success message to user
-  void _showSuccess(String message) {
-    Get.snackbar(
-      "Success",
-      message,
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: Colors.green.shade100,
-      colorText: Colors.green.shade800,
-      icon: const Icon(Icons.check_circle_outline, color: Colors.green),
-      duration: const Duration(seconds: 2),
-    );
-  }
 
   @override
   void dispose() {

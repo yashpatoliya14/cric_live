@@ -13,9 +13,15 @@ class TossDecisionView extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: Text("Toss & Players"), centerTitle: true),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+      appBar: const CommonAppHeader(
+        title: 'Toss & Players',
+        subtitle: 'Set toss result and select players',
+        leadingIcon: Icons.casino_rounded,
+      ),
+      body: SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
         child: Obx(
           () => Column(
             children: [
@@ -86,21 +92,65 @@ class TossDecisionView extends StatelessWidget {
           ),
         ),
       ),
+      ),
       // ...
       floatingActionButton: Obx(() {
-        // The UI just reads the isReady flag.
-        // The worker in the controller updates this flag automatically.
-        return FloatingActionButton.extended(
-          onPressed:
-              controller.isReady.value ? () => controller.startMatch() : null,
-          backgroundColor:
-              controller.isReady.value
-                  ? theme.colorScheme.primary
-                  : theme.disabledColor,
-          // ... rest of your UI code
-          label: Text(
-            controller.isReady.value ? "Start Match" : "Select Players",
-            // ...
+        // The UI just reads the isReady flag and loading state.
+        final isReady = controller.isReady.value;
+        final isLoading = controller.isCreatingMatch.value;
+        
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+          child: FloatingActionButton.extended(
+            onPressed:
+                (isReady && !isLoading) ? () => controller.startMatch() : null,
+            backgroundColor:
+                isLoading
+                    ? theme.colorScheme.primary.withOpacity(0.8)
+                    : (isReady
+                        ? theme.colorScheme.primary
+                        : theme.disabledColor),
+            foregroundColor: Colors.white,
+            elevation: isReady ? 8 : 2,
+            splashColor: Colors.white.withOpacity(0.3),
+            heroTag: "startMatch", // Prevent hero animation conflicts
+            extendedPadding: const EdgeInsets.symmetric(
+              horizontal: 20,
+              vertical: 0,
+            ),
+            icon: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              child: isLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : Icon(
+                      isReady ? Icons.sports_cricket : Icons.person_add,
+                      color: Colors.white,
+                      key: ValueKey(isReady ? 'ready' : 'not_ready'),
+                    ),
+            ),
+            label: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              child: Text(
+                isLoading
+                    ? "Starting Match..."
+                    : (isReady ? "Start Match" : "Select Players"),
+                key: ValueKey(isLoading ? 'loading' : (isReady ? 'ready' : 'select')),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
           ),
         );
       }),

@@ -5,7 +5,7 @@
 //   final ApiServices _apiServices = ApiServices();
 //
 //   /// Fetch all user's matches based on uid
-//   Future<List<CreateMatchModel>?> getUsersMatches() async {
+//   Future<List<MatchModel>?> getUsersMatches() async {
 //     try {
 //       TokenModel? model = _authService.fetchInfoFromToken();
 //       if (model == null) {
@@ -17,7 +17,7 @@
 //         "/CL_Matches/GetMatchesByUser/$uid",
 //       );
 //
-//       List<CreateMatchModel> matches = [];
+//       List<MatchModel> matches = [];
 //
 //       // Check if matches data exists and is a list
 //       if (data.containsKey("matches") && data["matches"] is List) {
@@ -26,7 +26,7 @@
 //         for (dynamic matchData in rawMatches) {
 //           if (matchData is Map<String, dynamic>) {
 //             try {
-//               CreateMatchModel model = CreateMatchModel.fromMap(matchData);
+//               MatchModel model = MatchModel.fromMap(matchData);
 //               matches.add(model);
 //             } catch (e) {
 //               log('Error creating match model: ${e.toString()}');
@@ -53,7 +53,7 @@
 //       if (e.toString().contains("Not Found")) {
 //         log("⚠️ Match endpoints not implemented on backend server");
 //         log("💡 Returning empty list for now");
-//         return <CreateMatchModel>[];
+//         return <MatchModel>[];
 //       } else if (e.toString().contains("Server Error")) {
 //         throw Exception("Server Side Error In fetch matches by user");
 //       }
@@ -62,14 +62,14 @@
 //   }
 //
 //   /// Fetch live matches
-//   Future<List<CreateMatchModel>?> getLiveMatches() async {
+//   Future<List<MatchModel>?> getLiveMatches() async {
 //     try {
 //       ApiServices apiServices = ApiServices();
 //       Map<String, dynamic> data = await apiServices.get(
 //         "/CL_Matches/GetLiveMatch",
 //       );
 //
-//       List<CreateMatchModel> matches = [];
+//       List<MatchModel> matches = [];
 //
 //       // Check if matches data exists and is a list
 //       if (data.containsKey("matches") && data["matches"] is List) {
@@ -78,7 +78,7 @@
 //         for (dynamic matchData in rawMatches) {
 //           if (matchData is Map<String, dynamic>) {
 //             try {
-//               CreateMatchModel model = CreateMatchModel.fromMap(matchData);
+//               MatchModel model = MatchModel.fromMap(matchData);
 //               matches.add(model);
 //             } catch (e) {
 //               log('Error creating match model: ${e.toString()}');

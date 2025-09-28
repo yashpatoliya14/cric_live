@@ -2,22 +2,45 @@ import 'package:cric_live/utils/import_exports.dart';
 
 class DashboardController extends GetxController {
   RxString email = "".obs;
+  RxString username = "".obs;
+  RxString displayName = "".obs;
+  Rx<TokenModel?> userToken = Rx<TokenModel?>(null);
+
   @override
   void onInit() {
-    fetchEmail();
-    // TODO: implement onInit
+    fetchUserInfo();
     super.onInit();
   }
 
-  fetchEmail() {
+  fetchUserInfo() {
     try {
       AuthService authService = AuthService();
       TokenModel? model = authService.fetchInfoFromToken();
-      email.value = model?.email ?? "cricket@user.com"; // Better fallback
-      email.refresh();
+      
+      if (model != null) {
+        userToken.value = model;
+        email.value = model.email ?? "cricket@user.com";
+        username.value = model.username ?? "";
+        displayName.value = model.displayName;
+        
+        // Refresh all observables
+        email.refresh();
+        username.refresh();
+        displayName.refresh();
+        userToken.refresh();
+        
+        log('User info loaded: ${model.displayName} (${model.email})');
+      } else {
+        // Fallback values
+        email.value = "cricket@user.com";
+        displayName.value = "Cricket User";
+        log('No user token found, using fallback values');
+      }
     } catch (e) {
-      log('Error fetching email: $e');
-      email.value = "cricket@user.com"; // Safe fallback
+      log('Error fetching user info: $e');
+      // Safe fallbacks
+      email.value = "cricket@user.com";
+      displayName.value = "Cricket User";
     }
   }
 

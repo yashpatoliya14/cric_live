@@ -1,5 +1,7 @@
 import 'dart:developer';
 
+import 'user_role.dart';
+
 class TournamentModel {
   final int tournamentId;
   final String name;
@@ -88,6 +90,71 @@ class TournamentModel {
           // Check by scorerId if uid is provided
           (uid != null && scorer.scorerId == uid),
     );
+  }
+
+  /// Enhanced access control methods
+  
+  /// Check if user is the tournament host/owner
+  bool isUserHost(int? userId) {
+    return userId != null && userId == hostId;
+  }
+
+  /// Check if user is in the scorers list (but not necessarily the host)
+  bool isUserInScorersList(int? userId) {
+    if (userId == null) return false;
+    return scorers.any((scorer) => scorer.scorerId == userId);
+  }
+
+  /// Get user role in tournament
+  UserRole getUserRole(int? userId) {
+    if (userId == null) return UserRole.viewer;
+    
+    if (isUserHost(userId)) {
+      return UserRole.host;
+    }
+    
+    if (isUserInScorersList(userId)) {
+      return UserRole.scorer;
+    }
+    
+    return UserRole.viewer;
+  }
+
+  /// Check if user has access to create matches
+  bool canUserCreateMatches(int? userId) {
+    UserRole role = getUserRole(userId);
+    return role == UserRole.host || role == UserRole.scorer;
+  }
+
+  /// Check if user has access to edit matches
+  bool canUserEditMatches(int? userId) {
+    UserRole role = getUserRole(userId);
+    return role == UserRole.host || role == UserRole.scorer;
+  }
+
+  /// Check if user has access to delete matches
+  bool canUserDeleteMatches(int? userId) {
+    UserRole role = getUserRole(userId);
+    return role == UserRole.host || role == UserRole.scorer;
+  }
+
+  /// Check if user has access to start/stop matches
+  bool canUserControlMatches(int? userId) {
+    UserRole role = getUserRole(userId);
+    return role == UserRole.host || role == UserRole.scorer;
+  }
+
+  /// Get user role as text
+  String getUserRoleText(int? userId) {
+    switch (getUserRole(userId)) {
+      case UserRole.host:
+        return "Tournament Admin";
+      case UserRole.scorer:
+        return "Scorer Access";
+      case UserRole.viewer:
+      default:
+        return "View Only";
+    }
   }
 }
 

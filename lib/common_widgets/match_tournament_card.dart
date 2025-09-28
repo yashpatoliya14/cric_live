@@ -90,7 +90,6 @@ class MatchTournamentCard extends StatelessWidget {
   }
 
   Widget _buildEnhancedMatchStatusRow(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
     final colorScheme = Theme.of(context).colorScheme;
 
     return Row(
@@ -144,7 +143,6 @@ class MatchTournamentCard extends StatelessWidget {
   }
 
   Widget _buildEnhancedMatchStatusBadge(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
     final isLive = matchStatus.toLowerCase() == "live";
     final isCompleted = matchStatus.toLowerCase() == "completed";
 
@@ -205,7 +203,6 @@ class MatchTournamentCard extends StatelessWidget {
     String? score,
     String? overs,
   ) {
-    final textTheme = Theme.of(context).textTheme;
     final colorScheme = Theme.of(context).colorScheme;
 
     return Container(
@@ -286,7 +283,6 @@ class MatchTournamentCard extends StatelessWidget {
   }
 
   Widget _buildMatchAdditionalInfo(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
 
     return Container(
       padding: const EdgeInsets.all(16),

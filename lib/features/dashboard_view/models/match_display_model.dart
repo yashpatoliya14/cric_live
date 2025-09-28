@@ -1,8 +1,8 @@
-import 'package:cric_live/features/create_match_view/create_match_model.dart';
+import 'package:cric_live/features/create_match_view/match_model.dart';
 import 'package:cric_live/features/result_view/models/complete_match_result_model.dart';
 
 class MatchDisplayModel {
-  final CreateMatchModel matchData;
+  final MatchModel matchData;
   final CompleteMatchResultModel? matchResult;
 
   MatchDisplayModel({

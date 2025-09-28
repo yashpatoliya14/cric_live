@@ -31,34 +31,33 @@ class ScoreboardView extends StatelessWidget {
 
     return PopScope(
       canPop: false,
-      onPopInvoked: (didPop) async {
-        final result = await controller.onWillPopScope();
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final dialogResult = await _showBackButtonDialog(context, controller);
+        if (dialogResult == true && context.mounted) {
+          Navigator.of(context).pop();
+        }
       },
       child: Scaffold(
         backgroundColor: Colors.grey.shade50,
-        appBar: AppBar(
-          title: Text(
-            APPBAR_SCOREBOARD,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: context.rFont(20),
-            ),
-          ),
-          backgroundColor: Theme.of(context).primaryColor,
-          foregroundColor: Colors.white,
-          elevation: 2,
+        appBar: const CommonAppHeader(
+          title: 'Scoreboard',
+          subtitle: 'Live match scoring',
+          leadingIcon: Icons.sports_cricket,
         ),
         body: SafeArea(
+          top: false,
           child: LayoutBuilder(
             builder: (context, constraints) {
+              final screenWidth = MediaQuery.of(context).size.width;
+              final padding = screenWidth < 360 ? 8.0 : screenWidth < 480 ? 12.0 : 16.0;
+              
               return SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
-                padding: context.adaptivePadding,
+                padding: EdgeInsets.all(padding),
                 child: ConstrainedBox(
                   constraints: BoxConstraints(
-                    minHeight:
-                        constraints.maxHeight -
-                        context.adaptivePadding.vertical,
+                    minHeight: constraints.maxHeight - (padding * 2),
                   ),
                   child:
                       isLandscape
@@ -83,12 +82,12 @@ class ScoreboardView extends StatelessWidget {
         // Main Score Section
         _buildMainScoreSection(context, controller),
 
-        SizedBox(height: context.rSpacing(8)),
+        const SizedBox(height: 8),
 
         // Stats Section
         _buildStatsSection(context, controller),
 
-        SizedBox(height: context.rSpacing(8)),
+        const SizedBox(height: 8),
 
         // Action Buttons
         _buildActionSection(context, controller),
@@ -110,13 +109,13 @@ class ScoreboardView extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               _buildMainScoreSection(context, controller),
-              SizedBox(height: context.rSpacing(8)),
+              const SizedBox(height: 8),
               _buildStatsSection(context, controller),
             ],
           ),
         ),
 
-        SizedBox(width: context.rSpacing(8)),
+        const SizedBox(width: 8),
 
         // Right side - Action Buttons
         Expanded(flex: 6, child: _buildActionSection(context, controller)),
@@ -128,9 +127,12 @@ class ScoreboardView extends StatelessWidget {
     BuildContext context,
     ScoreboardController controller,
   ) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final padding = screenWidth < 360 ? 8.0 : screenWidth < 480 ? 12.0 : 16.0;
+    
     return Container(
       width: double.infinity,
-      padding: context.adaptivePadding,
+      padding: EdgeInsets.all(padding),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -140,7 +142,7 @@ class ScoreboardView extends StatelessWidget {
             Theme.of(context).primaryColor.withValues(alpha: 0.8),
           ],
         ),
-        borderRadius: BorderRadius.circular(context.rRadius(16)),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
             color: Theme.of(context).primaryColor.withValues(alpha: 0.3),
@@ -157,9 +159,9 @@ class ScoreboardView extends StatelessWidget {
           Obx(
             () => Text(
               "${controller.team1.value} vs ${controller.team2.value}",
-              style: TextStyle(
+              style: const TextStyle(
                 color: Colors.white,
-                fontSize: context.rFont(16),
+                fontSize: 16,
                 fontWeight: FontWeight.w600,
               ),
               textAlign: TextAlign.center,
@@ -168,7 +170,7 @@ class ScoreboardView extends StatelessWidget {
             ),
           ),
 
-          SizedBox(height: context.rSpacing(12)),
+          const SizedBox(height: 12),
 
           // Main Score
           Obx(
@@ -176,9 +178,9 @@ class ScoreboardView extends StatelessWidget {
               fit: BoxFit.scaleDown,
               child: Text(
                 "${controller.totalRuns.value}/${controller.wickets.value}",
-                style: TextStyle(
+                style: const TextStyle(
                   color: Colors.white,
-                  fontSize: context.rFont(48),
+                  fontSize: 48,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 2,
                 ),
@@ -187,7 +189,7 @@ class ScoreboardView extends StatelessWidget {
             ),
           ),
 
-          SizedBox(height: context.rSpacing(12)),
+          const SizedBox(height: 12),
 
           // Match Info Row
           Obx(
@@ -207,8 +209,8 @@ class ScoreboardView extends StatelessWidget {
                 _buildInfoItem(
                   context,
                   "CRR",
-                  controller.CRR.value.isFinite && !controller.CRR.value.isNaN
-                      ? controller.CRR.value.toStringAsFixed(2)
+                  controller.crr.value.isFinite && !controller.crr.value.isNaN
+                      ? controller.crr.value.toStringAsFixed(2)
                       : "-",
                 ),
               ],
@@ -228,17 +230,17 @@ class ScoreboardView extends StatelessWidget {
             label,
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.8),
-              fontSize: context.rFont(12),
+              fontSize: 12,
               fontWeight: FontWeight.w500,
             ),
             overflow: TextOverflow.ellipsis,
           ),
-          SizedBox(height: context.rSpacing(2)),
+          const SizedBox(height: 2),
           Text(
             value,
-            style: TextStyle(
+            style: const TextStyle(
               color: Colors.white,
-              fontSize: context.rFont(14),
+              fontSize: 14,
               fontWeight: FontWeight.bold,
             ),
             overflow: TextOverflow.ellipsis,
@@ -258,14 +260,14 @@ class ScoreboardView extends StatelessWidget {
         // Current Over
         _buildCurrentOverSection(context, controller),
 
-        SizedBox(height: context.rSpacing(8)),
+        const SizedBox(height: 8),
 
         // Player Stats
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(child: _buildBattingSection(context, controller)),
-            SizedBox(width: context.rSpacing(8)),
+            const SizedBox(width: 8),
             Expanded(child: _buildBowlingSection(context, controller)),
           ],
         ),
@@ -280,70 +282,232 @@ class ScoreboardView extends StatelessWidget {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(context.rRadius(12)),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.blue.shade50,
+            Colors.white,
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.blue.shade200,
+          width: 1,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.shade300,
-            blurRadius: 6,
-            offset: const Offset(0, 2),
+            color: Colors.blue.shade100.withValues(alpha: 0.5),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
       child: Padding(
-        padding: context.adaptivePadding,
+        padding: const EdgeInsets.all(18),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              "Current Over",
-              style: TextStyle(
-                fontSize: context.rFont(16),
-                fontWeight: FontWeight.bold,
-                color: Colors.grey.shade800,
-              ),
+            // Header with icon
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade100,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.sports_cricket,
+                    color: Colors.blue.shade700,
+                    size: 18,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  "Current Over",
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.blue.shade800,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ],
             ),
-            SizedBox(height: context.rSpacing(8)),
+            const SizedBox(height: 16),
             Obx(() {
               List<String> ballSequence =
                   (controller.oversState['ballSequence'] as List<dynamic>?)
                       ?.map((e) => e.toString())
                       .toList() ??
                   [];
+              bool isOverComplete = controller.oversState['isOverComplete'] == true;
 
-              return SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Display actual ball sequence
-                    for (int i = 0; i < ballSequence.length; i++)
-                      Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: context.rSpacing(3),
-                        ),
-                        child: _buildBallIndicatorLarge(
-                          context,
-                          ballSequence[i],
-                          _getBallColor(context, ballSequence[i]),
-                          true,
-                        ),
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Ball sequence with improved layout
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Colors.grey.shade200,
+                        width: 1,
                       ),
-                    // Fill remaining slots with empty circles
-                    for (int i = ballSequence.length; i < 6; i++)
-                      Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: context.rSpacing(3),
-                        ),
-                        child: _buildBallIndicatorLarge(
-                          context,
-                          "-",
-                          Colors.grey.shade300,
-                          false,
-                        ),
+                    ),
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          // Display actual ball sequence
+                          for (int i = 0; i < ballSequence.length; i++)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  _buildBallIndicatorLarge(
+                                    context,
+                                    ballSequence[i],
+                                    _getBallColor(context, ballSequence[i]),
+                                    true,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    "${i + 1}",
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.grey.shade600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          // Fill remaining slots with empty circles
+                          for (int i = ballSequence.length; i < 6; i++)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  _buildBallIndicatorLarge(
+                                    context,
+                                    "-",
+                                    Colors.grey.shade300,
+                                    false,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    "${i + 1}",
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.grey.shade400,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                        ],
                       ),
-                  ],
-                ),
+                    ),
+                  ),
+                  // Show new bowler selection button when over is completed
+                  Obx(() {
+                    if (controller.isOverCompleted || isOverComplete) {
+                      return Container(
+                        margin: const EdgeInsets.only(top: 12),
+                        width: double.infinity,
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () => controller.onTapSelectNewBowler(),
+                            borderRadius: BorderRadius.circular(16),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    Colors.orange.shade500,
+                                    Colors.orange.shade600,
+                                  ],
+                                ),
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.orange.shade300,
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: const BoxDecoration(
+                                      color: Colors.white24,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.sports_cricket,
+                                      color: Colors.white,
+                                      size: 18,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        "Over Completed!",
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      Text(
+                                        "Tap to select new bowler",
+                                        style: TextStyle(
+                                          color: Colors.white70,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Icon(
+                                    Icons.arrow_forward_ios,
+                                    color: Colors.white,
+                                    size: 16,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  }),
+                ],
               );
             }),
           ],
@@ -358,12 +522,21 @@ class ScoreboardView extends StatelessWidget {
     Color color,
     bool isFilled,
   ) {
+    // Determine size based on text length
+    final isLongText = text.length > 2;
+    final indicatorWidth = isLongText ? 42.0 : 32.0;
+    final indicatorHeight = isLongText ? 32.0 : 32.0;
+    final baseFontSize = isLongText ? 9.0 : 12.0;
+    
     return Container(
-      width: context.rWidth(32),
-      height: context.rWidth(32),
+      width: indicatorWidth,
+      height: indicatorHeight,
       decoration: BoxDecoration(
         color: color,
-        shape: BoxShape.circle,
+        borderRadius: isLongText 
+            ? BorderRadius.circular(16) 
+            : null,
+        shape: isLongText ? BoxShape.rectangle : BoxShape.circle,
         border:
             !isFilled
                 ? Border.all(color: Colors.grey.shade400, width: 2)
@@ -380,12 +553,20 @@ class ScoreboardView extends StatelessWidget {
                 : null,
       ),
       child: Center(
-        child: Text(
-          text,
-          style: TextStyle(
-            color: isFilled ? Colors.white : Colors.grey.shade600,
-            fontWeight: FontWeight.bold,
-            fontSize: context.rFont(12),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Padding(
+            padding: EdgeInsets.all(isLongText ? 2.0 : 1.0),
+            child: Text(
+              text,
+              style: TextStyle(
+                color: isFilled ? Colors.white : Colors.grey.shade600,
+                fontWeight: FontWeight.bold,
+                fontSize: baseFontSize,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+            ),
           ),
         ),
       ),
@@ -400,7 +581,7 @@ class ScoreboardView extends StatelessWidget {
       width: double.infinity,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(context.rRadius(12)),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.green.shade300, width: 2),
         boxShadow: [
           BoxShadow(
@@ -411,7 +592,7 @@ class ScoreboardView extends StatelessWidget {
         ],
       ),
       child: Padding(
-        padding: context.adaptivePadding / 2,
+        padding: const EdgeInsets.all(8),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -421,14 +602,14 @@ class ScoreboardView extends StatelessWidget {
                 Icon(
                   Icons.sports_cricket,
                   color: Colors.green,
-                  size: context.rWidth(16),
+                  size: 16,
                 ),
-                SizedBox(width: context.rSpacing(4)),
+                const SizedBox(width: 4),
                 Flexible(
                   child: Text(
                     "Batting",
                     style: TextStyle(
-                      fontSize: context.rFont(14),
+                      fontSize: 14,
                       fontWeight: FontWeight.bold,
                       color: Colors.green.shade800,
                     ),
@@ -437,7 +618,7 @@ class ScoreboardView extends StatelessWidget {
                 ),
               ],
             ),
-            SizedBox(height: context.rSpacing(6)),
+            const SizedBox(height: 6),
             Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -449,7 +630,7 @@ class ScoreboardView extends StatelessWidget {
                     true,
                   ),
                 ),
-                SizedBox(height: context.rSpacing(4)),
+                const SizedBox(height: 4),
                 Obx(
                   () => _buildPlayerStatsCompact(
                     context,
@@ -474,7 +655,7 @@ class ScoreboardView extends StatelessWidget {
       width: double.infinity,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(context.rRadius(12)),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.red.shade300, width: 2),
         boxShadow: [
           BoxShadow(
@@ -485,7 +666,7 @@ class ScoreboardView extends StatelessWidget {
         ],
       ),
       child: Padding(
-        padding: context.adaptivePadding / 2,
+        padding: const EdgeInsets.all(8),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -495,14 +676,14 @@ class ScoreboardView extends StatelessWidget {
                 Icon(
                   Icons.sports_baseball,
                   color: Colors.red,
-                  size: context.rWidth(16),
+                  size: 16,
                 ),
-                SizedBox(width: context.rSpacing(4)),
+                const SizedBox(width: 4),
                 Flexible(
                   child: Text(
                     "Bowling",
                     style: TextStyle(
-                      fontSize: context.rFont(14),
+                      fontSize: 14,
                       fontWeight: FontWeight.bold,
                       color: Colors.red.shade800,
                     ),
@@ -511,7 +692,7 @@ class ScoreboardView extends StatelessWidget {
                 ),
               ],
             ),
-            SizedBox(height: context.rSpacing(6)),
+            const SizedBox(height: 6),
             Obx(() => _buildBowlerStatsCompact(context, controller)),
           ],
         ),
@@ -527,10 +708,10 @@ class ScoreboardView extends StatelessWidget {
   ) {
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.all(context.rSpacing(6)),
+      padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
         color: isStriker ? Colors.green.shade50 : Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(context.rRadius(6)),
+        borderRadius: BorderRadius.circular(6),
         border:
             isStriker
                 ? Border.all(color: Colors.green.shade300, width: 1)
@@ -551,12 +732,12 @@ class ScoreboardView extends StatelessWidget {
                     shape: BoxShape.circle,
                   ),
                 ),
-              if (isStriker) SizedBox(width: context.rSpacing(4)),
+              if (isStriker) const SizedBox(width: 4),
               Expanded(
                 child: Text(
                   playerName.isEmpty ? "Select Player" : playerName,
                   style: TextStyle(
-                    fontSize: context.rFont(12),
+                    fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color:
                         isStriker
@@ -569,7 +750,7 @@ class ScoreboardView extends StatelessWidget {
               ),
             ],
           ),
-          SizedBox(height: context.rSpacing(4)),
+          const SizedBox(height: 4),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
@@ -606,10 +787,10 @@ class ScoreboardView extends StatelessWidget {
   ) {
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.all(context.rSpacing(6)),
+      padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
         color: Colors.red.shade50,
-        borderRadius: BorderRadius.circular(context.rRadius(6)),
+        borderRadius: BorderRadius.circular(6),
         border: Border.all(color: Colors.red.shade300, width: 1),
       ),
       child: Column(
@@ -621,14 +802,14 @@ class ScoreboardView extends StatelessWidget {
                 ? "Select Bowler"
                 : controller.bowler.value,
             style: TextStyle(
-              fontSize: context.rFont(12),
+              fontSize: 12,
               fontWeight: FontWeight.w600,
               color: Colors.red.shade800,
             ),
             overflow: TextOverflow.ellipsis,
             maxLines: 1,
           ),
-          SizedBox(height: context.rSpacing(4)),
+          const SizedBox(height: 4),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
@@ -666,7 +847,7 @@ class ScoreboardView extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
-            fontSize: context.rFont(10),
+            fontSize: 10,
             color: Colors.grey.shade600,
             fontWeight: FontWeight.w500,
           ),
@@ -674,7 +855,7 @@ class ScoreboardView extends StatelessWidget {
         Text(
           value,
           style: TextStyle(
-            fontSize: context.rFont(11),
+            fontSize: 11,
             fontWeight: FontWeight.bold,
             color: Colors.grey.shade800,
           ),
@@ -691,7 +872,7 @@ class ScoreboardView extends StatelessWidget {
       width: double.infinity,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(context.rRadius(16)),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
             color: Colors.grey.shade300,
@@ -701,22 +882,177 @@ class ScoreboardView extends StatelessWidget {
         ],
       ),
       child: Padding(
-        padding: context.adaptivePadding,
+        padding: const EdgeInsets.all(16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Run Buttons - Main Priority
-            _buildMainRunButtons(context, controller),
+            // Match Completed - Show message if user chose to stay
+            Obx(() {
+              if (controller.isMatchCompleted && controller.userChoseStayAfterMatchEnd) {
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.orange.shade300,
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.info_outline,
+                            color: Colors.orange.shade600,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  "Match Completed!",
+                                  style: TextStyle(
+                                    color: Colors.orange.shade700,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                Text(
+                                  "All actions are disabled except undo.",
+                                  style: TextStyle(
+                                    color: Colors.orange.shade600,
+                                    fontSize: 12,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                );
+              }
+              return const SizedBox.shrink();
+            }),
+            
+            // Run Buttons - Main Priority (disabled when over completed or match completed with stay choice)
+            Obx(() => Opacity(
+              opacity: (controller.isOverCompleted || (controller.isMatchCompleted && controller.userChoseStayAfterMatchEnd)) ? 0.5 : 1.0,
+              child: IgnorePointer(
+                ignoring: controller.isOverCompleted || (controller.isMatchCompleted && controller.userChoseStayAfterMatchEnd),
+                child: _buildMainRunButtons(context, controller),
+              ),
+            )),
 
-            SizedBox(height: context.rSpacing(10)),
+            const SizedBox(height: 10),
 
-            // Extras Row
-            _buildExtrasSection(context, controller),
+            // Extras Row (with selective disabling - undo always enabled)
+            Obx(() => _buildExtrasSection(context, controller)),
 
-            SizedBox(height: context.rSpacing(8)),
+            const SizedBox(height: 8),
 
-            // Special Actions Row
-            _buildSpecialActionsSection(context, controller),
+            // Special Actions Row (disabled when over completed or match completed with stay choice, but allow undo)
+            Obx(() => _buildSpecialActionsSection(context, controller)),
+            
+            // Show disabled message when over is completed or match is completed
+            Obx(() {
+              if (controller.isOverCompleted) {
+                return Container(
+                  margin: const EdgeInsets.only(top: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: Colors.grey.shade300,
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.block,
+                        size: 14,
+                        color: Colors.grey.shade600,
+                      ),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          "Scoring disabled - Select new bowler to continue",
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                            fontStyle: FontStyle.italic,
+                          ),
+                          textAlign: TextAlign.center,
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 2,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              } else if (controller.isMatchCompleted && controller.userChoseStayAfterMatchEnd) {
+                return Container(
+                  margin: const EdgeInsets.only(top: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: Colors.green.shade300,
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.undo,
+                        size: 14,
+                        color: Colors.green.shade600,
+                      ),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          "Match completed - Only undo is available to continue scoring",
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.green.shade600,
+                            fontStyle: FontStyle.italic,
+                          ),
+                          textAlign: TextAlign.center,
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 2,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+              return const SizedBox.shrink();
+            }),
           ],
         ),
       ),
@@ -729,23 +1065,37 @@ class ScoreboardView extends StatelessWidget {
   ) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Calculate button size based on available space
-        final availableWidth = constraints.maxWidth - (context.rSpacing(4) * 6);
-        final buttonSize = (availableWidth / 7).clamp(32.0, 56.0);
+        // Calculate optimal spacing and button size
+        const int buttonCount = 7;
+        const int spacingCount = 6; // 6 spaces between 7 buttons
+        const double minButtonSize = 30.0;
+        const double maxButtonSize = 50.0;
+        
+        // Calculate spacing that fits available width
+        double spacing = 3.0;
+        double totalSpacing = spacing * spacingCount;
+        double availableForButtons = constraints.maxWidth - totalSpacing;
+        double buttonSize = (availableForButtons / buttonCount).clamp(minButtonSize, maxButtonSize);
+        
+        // Recalculate with actual button size to ensure we don't overflow
+        double totalButtonWidth = buttonSize * buttonCount;
+        double remainingWidth = constraints.maxWidth - totalButtonWidth - 4; // Safety margin
+        spacing = (remainingWidth / spacingCount).clamp(2.0, 6.0);
 
         return SingleChildScrollView(
           scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 2),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               _buildRunButton(context, "0", 0, controller, buttonSize),
-              SizedBox(width: context.rSpacing(4)),
+              SizedBox(width: spacing),
               _buildRunButton(context, "1", 1, controller, buttonSize),
-              SizedBox(width: context.rSpacing(4)),
+              SizedBox(width: spacing),
               _buildRunButton(context, "2", 2, controller, buttonSize),
-              SizedBox(width: context.rSpacing(4)),
+              SizedBox(width: spacing),
               _buildRunButton(context, "3", 3, controller, buttonSize),
-              SizedBox(width: context.rSpacing(4)),
+              SizedBox(width: spacing),
               _buildRunButton(
                 context,
                 "4",
@@ -754,9 +1104,9 @@ class ScoreboardView extends StatelessWidget {
                 buttonSize,
                 isSpecial: true,
               ),
-              SizedBox(width: context.rSpacing(4)),
+              SizedBox(width: spacing),
               _buildRunButton(context, "5", 5, controller, buttonSize),
-              SizedBox(width: context.rSpacing(4)),
+              SizedBox(width: spacing),
               _buildRunButton(
                 context,
                 "6",
@@ -781,7 +1131,11 @@ class ScoreboardView extends StatelessWidget {
     bool isSpecial = false,
   }) {
     return GestureDetector(
-      onTap: () => controller.onTapRun(runs: runs),
+      onTap: () => DebouncingUtil.debounceTap(
+        'run_button_$runs',
+        () => controller.onTapRun(runs: runs),
+        delay: const Duration(milliseconds: 150),
+      ),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         width: size,
@@ -810,7 +1164,7 @@ class ScoreboardView extends StatelessWidget {
             child: Text(
               text,
               style: TextStyle(
-                fontSize: context.rFont(20),
+                fontSize: 20,
                 fontWeight: FontWeight.bold,
                 color: isSpecial ? Colors.white : Colors.grey.shade700,
               ),
@@ -825,59 +1179,84 @@ class ScoreboardView extends StatelessWidget {
     BuildContext context,
     ScoreboardController controller,
   ) {
+    final isDisabled = controller.isOverCompleted || (controller.isMatchCompleted && controller.userChoseStayAfterMatchEnd);
+    final isMatchCompletedAndStaying = controller.isMatchCompleted && controller.userChoseStayAfterMatchEnd;
+    
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
+          // Wide button - can be disabled
           Obx(
-            () => _buildToggleButton(
-              context,
-              "Wide",
-              controller.isWideSelected.value,
-              () {
-                controller.isWideSelected.value =
-                    !controller.isWideSelected.value;
-                controller.isNoBallSelected.value = false;
-                controller.isByeSelected.value = false;
-              },
+            () => Opacity(
+              opacity: isDisabled ? 0.5 : 1.0,
+              child: IgnorePointer(
+                ignoring: isDisabled,
+                child: _buildToggleButton(
+                  context,
+                  "Wide",
+                  controller.isWideSelected.value,
+                  () {
+                    controller.isWideSelected.value =
+                        !controller.isWideSelected.value;
+                    controller.isNoBallSelected.value = false;
+                    controller.isByeSelected.value = false;
+                  },
+                ),
+              ),
             ),
           ),
-          SizedBox(width: context.rSpacing(8)),
+          const SizedBox(width: 8),
+          // No Ball button - can be disabled
           Obx(
-            () => _buildToggleButton(
-              context,
-              "No Ball",
-              controller.isNoBallSelected.value,
-              () {
-                controller.isNoBallSelected.value =
-                    !controller.isNoBallSelected.value;
-                controller.isWideSelected.value = false;
-                controller.isByeSelected.value = false;
-              },
+            () => Opacity(
+              opacity: isDisabled ? 0.5 : 1.0,
+              child: IgnorePointer(
+                ignoring: isDisabled,
+                child: _buildToggleButton(
+                  context,
+                  "No Ball",
+                  controller.isNoBallSelected.value,
+                  () {
+                    controller.isNoBallSelected.value =
+                        !controller.isNoBallSelected.value;
+                    controller.isWideSelected.value = false;
+                    controller.isByeSelected.value = false;
+                  },
+                ),
+              ),
             ),
           ),
-          SizedBox(width: context.rSpacing(8)),
+          const SizedBox(width: 8),
+          // Bye button - can be disabled
           Obx(
-            () => _buildToggleButton(
-              context,
-              "Bye",
-              controller.isByeSelected.value,
-              () {
-                controller.isByeSelected.value =
-                    !controller.isByeSelected.value;
-                controller.isWideSelected.value = false;
-                controller.isNoBallSelected.value = false;
-              },
+            () => Opacity(
+              opacity: isDisabled ? 0.5 : 1.0,
+              child: IgnorePointer(
+                ignoring: isDisabled,
+                child: _buildToggleButton(
+                  context,
+                  "Bye",
+                  controller.isByeSelected.value,
+                  () {
+                    controller.isByeSelected.value =
+                        !controller.isByeSelected.value;
+                    controller.isWideSelected.value = false;
+                    controller.isNoBallSelected.value = false;
+                  },
+                ),
+              ),
             ),
           ),
-          SizedBox(width: context.rSpacing(8)),
+          const SizedBox(width: 8),
+          // Undo button - ALWAYS ENABLED (even when match is completed and user chose to stay)
           _buildActionButton(
             context,
             "Undo",
             Icons.undo,
             () => controller.undoBall(),
-            Colors.grey.shade700,
+            isMatchCompletedAndStaying ? Colors.green.shade700 : Colors.grey.shade700, // Highlight undo when it's the only option
           ),
         ],
       ),
@@ -888,6 +1267,8 @@ class ScoreboardView extends StatelessWidget {
     BuildContext context,
     ScoreboardController controller,
   ) {
+    final isDisabled = controller.isOverCompleted || (controller.isMatchCompleted && controller.userChoseStayAfterMatchEnd);
+    
     return Row(
       children: [
         Expanded(
@@ -896,27 +1277,43 @@ class ScoreboardView extends StatelessWidget {
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
-                _buildActionButton(
-                  context,
-                  "Wicket",
-                  Icons.close,
-                  () => controller.onTapWicket(wicketType: "random"),
-                  Colors.red,
+                Opacity(
+                  opacity: isDisabled ? 0.5 : 1.0,
+                  child: IgnorePointer(
+                    ignoring: isDisabled,
+                    child: Obx(() => _buildActionButtonWithLoader(
+                      context,
+                      "Wicket",
+                      Icons.close,
+                      () => controller.onTapWicket(wicketType: "random"),
+                      Colors.red,
+                      controller.isWicketLoading.value,
+                    )),
+                  ),
                 ),
-                SizedBox(width: context.rSpacing(8)),
-                _buildActionButton(
-                  context,
-                  "Swap",
-                  Icons.swap_horiz,
-                  () => controller.onTapSwap(),
-                  Colors.blue,
+                const SizedBox(width: 8),
+                Opacity(
+                  opacity: isDisabled ? 0.5 : 1.0,
+                  child: IgnorePointer(
+                    ignoring: isDisabled,
+                    child: _buildActionButton(
+                      context,
+                      "Swap",
+                      Icons.swap_horiz,
+                      () => controller.onTapSwap(),
+                      Colors.blue,
+                    ),
+                  ),
                 ),
               ],
             ),
           ),
         ),
-        SizedBox(width: context.rSpacing(12)),
-        Expanded(flex: 1, child: _buildMainActionButton(context, controller)),
+        const SizedBox(width: 12),
+        Expanded(
+          flex: 1, 
+          child: _buildMainActionButton(context, controller) // Main button always enabled
+        ),
       ],
     );
   }
@@ -928,11 +1325,15 @@ class ScoreboardView extends StatelessWidget {
     VoidCallback onTap,
   ) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: () => DebouncingUtil.debounceTap(
+        'toggle_button_${text.toLowerCase().replaceAll(' ', '_')}',
+        onTap,
+        delay: const Duration(milliseconds: 100),
+      ),
       child: Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: context.rSpacing(12),
-          vertical: context.rSpacing(8),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 8,
         ),
         decoration: BoxDecoration(
           color: isSelected ? Colors.orange : Colors.white,
@@ -940,12 +1341,12 @@ class ScoreboardView extends StatelessWidget {
             color: isSelected ? Colors.orange : Colors.grey.shade400,
             width: 2,
           ),
-          borderRadius: BorderRadius.circular(context.rRadius(20)),
+          borderRadius: BorderRadius.circular(20),
         ),
         child: Text(
           text,
           style: TextStyle(
-            fontSize: context.rFont(12),
+            fontSize: 12,
             fontWeight: FontWeight.w600,
             color: isSelected ? Colors.white : Colors.grey.shade700,
           ),
@@ -962,28 +1363,90 @@ class ScoreboardView extends StatelessWidget {
     Color color,
   ) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: () => DebouncingUtil.debounceTap(
+        'action_button_${text.toLowerCase().replaceAll(' ', '_')}',
+        onTap,
+        delay: const Duration(milliseconds: 500),
+      ),
       child: Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: context.rSpacing(12),
-          vertical: context.rSpacing(8),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 8,
         ),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.1),
           border: Border.all(color: color, width: 2),
-          borderRadius: BorderRadius.circular(context.rRadius(12)),
+          borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: color, size: context.rWidth(16)),
-            SizedBox(width: context.rSpacing(4)),
+            Icon(icon, color: color, size: 16),
+            const SizedBox(width: 4),
             Text(
               text,
               style: TextStyle(
-                fontSize: context.rFont(12),
+                fontSize: 12,
                 fontWeight: FontWeight.w600,
                 color: color,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionButtonWithLoader(
+    BuildContext context,
+    String text,
+    IconData icon,
+    VoidCallback onTap,
+    Color color,
+    bool isLoading,
+  ) {
+    return GestureDetector(
+      onTap: isLoading ? null : () => DebouncingUtil.debounceTap(
+        'action_button_${text.toLowerCase().replaceAll(' ', '_')}',
+        onTap,
+        delay: const Duration(milliseconds: 500),
+      ),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 8,
+        ),
+        decoration: BoxDecoration(
+          color: isLoading 
+              ? color.withValues(alpha: 0.2) 
+              : color.withValues(alpha: 0.1),
+          border: Border.all(
+            color: isLoading ? color.withValues(alpha: 0.5) : color, 
+            width: 2,
+          ),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            isLoading
+                ? SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(color),
+                    ),
+                  )
+                : Icon(icon, color: color, size: 16),
+            const SizedBox(width: 4),
+            Text(
+              isLoading ? "Processing..." : text,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: isLoading ? color.withValues(alpha: 0.7) : color,
               ),
             ),
           ],
@@ -997,31 +1460,277 @@ class ScoreboardView extends StatelessWidget {
     ScoreboardController controller,
   ) {
     return Obx(
-      () => ElevatedButton(
-        onPressed: () => controller.onTapMainButton(),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Theme.of(context).primaryColor,
-          foregroundColor: Colors.white,
-          padding: EdgeInsets.symmetric(
-            vertical: context.rSpacing(12),
-            horizontal: context.rSpacing(8),
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(context.rRadius(12)),
-          ),
-          elevation: 4,
-        ),
-        child: FittedBox(
-          child: Text(
-            controller.inningNo.value == 1 ? "Next\nInning" : "End\nMatch",
-            style: TextStyle(
-              fontSize: context.rFont(14),
-              fontWeight: FontWeight.bold,
+      () {
+        final isSecondInning = controller.inningNo.value == 2;
+        final buttonText = isSecondInning ? "End Match" : "Next Inning";
+        final buttonIcon = isSecondInning ? Icons.stop_circle : Icons.arrow_forward;
+        
+        return Container(
+          height: 44, // Fixed compact height
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                isSecondInning ? Colors.red.shade600 : Theme.of(context).primaryColor,
+                isSecondInning ? Colors.red.shade700 : Theme.of(context).primaryColor.withValues(alpha: 0.8),
+              ],
             ),
-            textAlign: TextAlign.center,
+            borderRadius: BorderRadius.circular(22), // More rounded for modern look
+            boxShadow: [
+              BoxShadow(
+                color: (isSecondInning ? Colors.red.shade300 : Theme.of(context).primaryColor.withValues(alpha: 0.4)),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
+              ),
+            ],
           ),
-        ),
-      ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: controller.isMainButtonLoading.value ? null : () => DebouncingUtil.debounceTap(
+                'main_action_button',
+                () => controller.onTapMainButton(),
+                delay: const Duration(milliseconds: 1000),
+              ),
+              borderRadius: BorderRadius.circular(22),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Network icon for 2nd inning
+                    if (isSecondInning) ...[
+                      Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.wifi,
+                          size: 12,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                    ],
+                    
+                    // Main button icon or loader
+                    Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: controller.isMainButtonLoading.value
+                          ? SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.white,
+                                ),
+                              ),
+                            )
+                          : Icon(
+                              buttonIcon,
+                              size: 14,
+                              color: Colors.white,
+                            ),
+                    ),
+                    
+                    const SizedBox(width: 8),
+                    
+                    // Button text
+                    Flexible(
+                      child: Text(
+                        controller.isMainButtonLoading.value ? "Processing..." : buttonText,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: controller.isMainButtonLoading.value 
+                              ? Colors.white.withValues(alpha: 0.8) 
+                              : Colors.white,
+                          letterSpacing: 0.3,
+                        ),
+                        textAlign: TextAlign.center,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+
+
+  /// Shows dialog when user presses back button during scoring
+  Future<bool?> _showBackButtonDialog(BuildContext context, ScoreboardController controller) async {
+    return await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade100,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.warning_outlined,
+                  color: Colors.orange.shade700,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  "Match in Progress",
+                  style: GoogleFonts.poppins(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 18,
+                    color: Colors.grey.shade800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.blue.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.blue.shade700, size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        "The match is currently being scored. What would you like to do?",
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          color: Colors.blue.shade700,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                "Choose one of the following options:",
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  color: Colors.grey.shade700,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                "• Resume: Continue scoring and save progress",
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+              Text(
+                "• End Match: Finish and save the match",
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+              Text(
+                "• Cancel: Go back to scoring",
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              ),
+              child: Text(
+                "Cancel",
+                style: GoogleFonts.poppins(
+                  color: Colors.grey.shade600,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            TextButton(
+              onPressed: () async {
+                Navigator.of(context).pop(false);
+                await controller.resumeMatch();
+              },
+              style: TextButton.styleFrom(
+                backgroundColor: Colors.green.shade50,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  side: BorderSide(color: Colors.green.shade300),
+                ),
+              ),
+              child: Text(
+                "Resume",
+                style: GoogleFonts.poppins(
+                  color: Colors.green.shade700,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.of(context).pop(false);
+                await controller.endMatchFromDialog();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red.shade600,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: Text(
+                "End Match",
+                style: GoogleFonts.poppins(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+          actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+        );
+      },
     );
   }
 }

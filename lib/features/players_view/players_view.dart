@@ -13,166 +13,32 @@ class PlayersView extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: Colors.blue.shade50,
-      body: NestedScrollView(
-        headerSliverBuilder:
-            (context, innerBoxIsScrolled) => [
-              SliverAppBar(
-                elevation: 0,
-                backgroundColor: Colors.deepOrange,
-                foregroundColor: Colors.white,
-                expandedHeight: 120,
-                floating: false,
-                pinned: true,
-                flexibleSpace: FlexibleSpaceBar(
-                  title: _buildEnhancedTitle(),
-                  titlePadding: const EdgeInsets.only(
-                    left: 16,
-                    bottom: 16,
-                    right: 16,
-                  ),
-                  centerTitle: false,
-                  background: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          Colors.deepOrange.shade400,
-                          Colors.deepOrange.shade600,
-                          Colors.deepOrange.shade800,
-                        ],
-                      ),
-                    ),
-                    child: Stack(
-                      children: [
-                        // Background cricket elements
-                        Positioned(
-                          right: -30,
-                          top: -30,
-                          child: Icon(
-                            Icons.sports_cricket,
-                            size: 100,
-                            color: Colors.white.withValues(alpha: 0.1),
-                          ),
-                        ),
-                        Positioned(
-                          left: -20,
-                          bottom: -20,
-                          child: Icon(
-                            Icons.group,
-                            size: 80,
-                            color: Colors.white.withValues(alpha: 0.05),
-                          ),
-                        ),
-                        // Floating particles effect
-                        Positioned(
-                          right: 100,
-                          top: 40,
-                          child: Container(
-                            width: 6,
-                            height: 6,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.3),
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          left: 80,
-                          top: 30,
-                          child: Container(
-                            width: 4,
-                            height: 4,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.2),
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
-        body: Obx(() {
-          try {
-            if (controller.isLoading.value) {
-              return _buildLoadingState();
-            }
-
-            if (controller.errorMessage.value.isNotEmpty) {
-              return _buildErrorState(controller);
-            }
-
-            if (controller.players.isEmpty) {
-              return _buildEmptyState();
-            }
-
-            return _buildPlayersList(controller);
-          } catch (e) {
-            return _buildErrorStateWithMessage('An unexpected error occurred');
-          }
-        }),
+      appBar: const CommonAppHeader(
+        title: 'Team Players',
+        subtitle: 'Squad Members',
+        leadingIcon: Icons.group,
       ),
-    );
-  }
+      body: SafeArea(
+        top: false,
+        child: Obx(() {
+        try {
+          if (controller.isLoading.value) {
+            return _buildLoadingState();
+          }
 
-  Widget _buildEnhancedTitle() {
-    return ShaderMask(
-      shaderCallback:
-          (bounds) => LinearGradient(
-            colors: [Colors.white, Colors.white.withValues(alpha: 0.8)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ).createShader(bounds),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        mainAxisAlignment: MainAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(Icons.group, color: Colors.white, size: 18),
-          ),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                APPBAR_TEAM_PLAYERS,
-                style: GoogleFonts.nunito(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1.0,
-                  height: 1.0,
-                  shadows: [
-                    Shadow(
-                      color: Colors.black.withValues(alpha: 0.3),
-                      offset: const Offset(1, 1),
-                      blurRadius: 3,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                "Squad Members",
-                style: GoogleFonts.nunito(
-                  color: Colors.white.withValues(alpha: 0.9),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  height: 1.0,
-                ),
-              ),
-            ],
-          ),
-        ],
+          if (controller.errorMessage.value.isNotEmpty) {
+            return _buildErrorState(controller);
+          }
+
+          if (controller.players.isEmpty) {
+            return _buildEmptyState();
+          }
+
+          return _buildPlayersList(controller);
+        } catch (e) {
+          return _buildErrorStateWithMessage('An unexpected error occurred');
+        }
+        }),
       ),
     );
   }

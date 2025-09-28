@@ -8,6 +8,7 @@ class TeamSelectionWidget extends StatefulWidget {
   final List<TeamSelectionModel> teams;
   final Function(TeamSelectionModel)? onTeamSelected;
   final Function(TeamSelectionModel)? onViewPlayers;
+  final Function(TeamSelectionModel)? onDeleteTeam;
   final String title;
   final String searchHint;
   final bool allowMultipleSelection;
@@ -28,6 +29,7 @@ class TeamSelectionWidget extends StatefulWidget {
     required this.teams,
     this.onTeamSelected,
     this.onViewPlayers,
+    this.onDeleteTeam,
     this.title = 'Select Team',
     this.searchHint = 'Search teams...',
     this.allowMultipleSelection = false,
@@ -56,20 +58,14 @@ class _TeamSelectionWidgetState extends State<TeamSelectionWidget>
   List<TeamSelectionModel> _filteredTeams = [];
   List<TeamSelectionModel> _selectedTeams = [];
   TeamSortBy _sortBy = TeamSortBy.name;
-  TeamViewMode _viewMode = TeamViewMode.list; // Keep only list view
-  bool _showActiveOnly = false;
-  String _selectedTournament = 'All';
-  List<String> _availableTournaments = ['All'];
 
   late AnimationController _searchAnimationController;
-  late AnimationController _filterAnimationController;
   late Animation<double> _searchAnimation;
   // Removed _filterAnimation since we're removing filters
 
   @override
   void initState() {
     super.initState();
-    _viewMode = widget.defaultViewMode;
     _selectedTeams = List.from(widget.selectedTeams ?? []);
     _initializeData();
     _setupAnimations();
@@ -93,18 +89,7 @@ class _TeamSelectionWidgetState extends State<TeamSelectionWidget>
 
   void _initializeData() {
     _filteredTeams = List.from(widget.teams);
-    _extractTournaments();
     _applyFilters();
-  }
-
-  void _extractTournaments() {
-    final tournaments =
-        widget.teams
-            .where((team) => team.tournamentName != null)
-            .map((team) => team.tournamentName!)
-            .toSet()
-            .toList();
-    _availableTournaments = ['All', ...tournaments];
   }
 
   @override
@@ -193,8 +178,23 @@ class _TeamSelectionWidgetState extends State<TeamSelectionWidget>
 
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
-      body: CustomScrollView(
-        slivers: [_buildSliverAppBar(theme), _buildTeamList(theme)],
+      appBar: CommonAppHeader(
+        title: widget.title,
+        subtitle: 'Select your cricket team',
+        leadingIcon: Icons.group,
+      ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: _buildSearchBar(theme),
+          ),
+          Expanded(
+            child: CustomScrollView(
+              slivers: [_buildTeamList(theme)],
+            ),
+          ),
+        ],
       ),
       floatingActionButton:
           widget.showCreateButton ? _buildCreateButton(theme) : null,
@@ -205,57 +205,6 @@ class _TeamSelectionWidgetState extends State<TeamSelectionWidget>
     );
   }
 
-  Widget _buildSliverAppBar(ThemeData theme) {
-    return SliverAppBar(
-      floating: true,
-      pinned: true,
-      backgroundColor: Colors.deepOrange,
-      foregroundColor: Colors.white,
-      elevation: 0,
-      title: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Icon(Icons.group, color: Colors.white, size: 20),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                widget.title,
-                style: GoogleFonts.nunito(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 20,
-                  letterSpacing: 1.2,
-                  height: 1.0,
-                  color: Colors.white,
-                ),
-              ),
-              Text(
-                "Select your cricket team",
-                style: GoogleFonts.nunito(
-                  fontWeight: FontWeight.w500,
-                  fontSize: 12,
-                  color: Colors.white.withOpacity(0.9),
-                  height: 1.0,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-      bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(60),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: _buildSearchBar(theme),
-        ),
-      ),
-      actions: [
-        // Removed view mode toggle and filter toggle
-      ],
-    );
-  }
 
   Widget _buildSearchBar(ThemeData theme) {
     return AnimatedBuilder(
@@ -306,75 +255,8 @@ class _TeamSelectionWidgetState extends State<TeamSelectionWidget>
     );
   }
 
-  Widget _buildSortFilter(ThemeData theme) {
-    return DropdownButtonFormField<TeamSortBy>(
-      value: _sortBy,
-      decoration: InputDecoration(
-        labelText: 'Sort by',
-        prefixIcon: Icon(Icons.sort_rounded),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      ),
-      items: [
-        DropdownMenuItem(value: TeamSortBy.name, child: Text('Name')),
-        DropdownMenuItem(value: TeamSortBy.winRate, child: Text('Win Rate')),
-        DropdownMenuItem(value: TeamSortBy.matches, child: Text('Matches')),
-        DropdownMenuItem(value: TeamSortBy.recent, child: Text('Recent')),
-      ],
-      onChanged: (value) {
-        if (value != null) {
-          setState(() {
-            _sortBy = value;
-            _applySorting();
-          });
-        }
-      },
-    );
-  }
 
-  Widget _buildTournamentFilter(ThemeData theme) {
-    return DropdownButtonFormField<String>(
-      value: _selectedTournament,
-      decoration: InputDecoration(
-        labelText: 'Tournament',
-        prefixIcon: Icon(Icons.emoji_events_rounded),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      ),
-      items:
-          _availableTournaments
-              .map(
-                (tournament) => DropdownMenuItem(
-                  value: tournament,
-                  child: Text(tournament),
-                ),
-              )
-              .toList(),
-      onChanged: (value) {
-        if (value != null) {
-          setState(() {
-            _selectedTournament = value;
-            _applyFilters();
-          });
-        }
-      },
-    );
-  }
 
-  Widget _buildActiveFilter(ThemeData theme) {
-    return SwitchListTile(
-      title: Text('Show active teams only'),
-      subtitle: Text('Filter out inactive teams'),
-      value: _showActiveOnly,
-      onChanged: (value) {
-        setState(() {
-          _showActiveOnly = value;
-          _applyFilters();
-        });
-      },
-      secondary: Icon(Icons.toggle_on_rounded),
-    );
-  }
 
   Widget _buildTeamList(ThemeData theme) {
     if (widget.isLoading) {
@@ -412,9 +294,13 @@ class _TeamSelectionWidgetState extends State<TeamSelectionWidget>
             widget.onViewPlayers != null
                 ? () => widget.onViewPlayers!(team)
                 : null,
+        onDeleteTeam:
+            widget.onDeleteTeam != null
+                ? () => widget.onDeleteTeam!(team)
+                : null,
         showStats: widget.showStats,
         showActions: widget.showActions,
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
       ),
     );
   }

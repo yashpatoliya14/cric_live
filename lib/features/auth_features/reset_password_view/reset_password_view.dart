@@ -22,6 +22,7 @@ class ResetPasswordView extends GetView<ResetPasswordController> {
           ),
         ),
         child: SafeArea(
+          top: false,
           child: Center(
             child: SingleChildScrollView(
               padding: EdgeInsets.symmetric(horizontal: 24.w),

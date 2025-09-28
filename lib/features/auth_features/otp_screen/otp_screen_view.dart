@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
+import 'package:cric_live/common_widgets/app_header.dart';
 
 import 'otp_screen_controller.dart';
 
@@ -11,13 +12,13 @@ class OtpScreenView extends GetView<OtpScreenController> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Verify OTP'),
-        centerTitle: true,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
+      appBar: const CommonAppHeader(
+        title: 'Verify OTP',
+        subtitle: 'Enter the verification code',
+        leadingIcon: Icons.security,
       ),
       body: SafeArea(
+        top: false,
         child: Padding(
           padding: EdgeInsets.symmetric(horizontal: 24.w),
           child: SingleChildScrollView(

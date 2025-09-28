@@ -2,6 +2,7 @@ import 'package:cric_live/utils/import_exports.dart';
 
 class CustomTextFormField extends StatelessWidget {
   final TextEditingController controller;
+  final TextCapitalization? textCapitalization;
   final String hintText;
   final String labelText;
   final String? Function(String?)? validator;
@@ -19,12 +20,14 @@ class CustomTextFormField extends StatelessWidget {
     this.onChanged,
     this.onTap,
     this.onFieldSubmitted,
+    this.textCapitalization,
   });
 
   @override
   Widget build(BuildContext context) {
     return TextFormField(
       controller: controller,
+      textCapitalization: textCapitalization ?? TextCapitalization.none,
       keyboardType: keyboardType,
       decoration: InputDecoration(
         hintText: hintText,

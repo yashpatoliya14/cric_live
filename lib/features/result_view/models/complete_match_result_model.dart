@@ -1,4 +1,3 @@
-import 'over_summary_model.dart';
 import 'team_innings_result_model.dart';
 
 class CompleteMatchResultModel {
@@ -21,10 +20,6 @@ class CompleteMatchResultModel {
   TeamInningsResultModel? team1Innings;
   TeamInningsResultModel? team2Innings;
 
-  // Over by over data
-  List<OverSummaryModel>? team1Overs;
-  List<OverSummaryModel>? team2Overs;
-
   // Match statistics
   int? totalOvers;
   int? totalBalls;
@@ -32,6 +27,21 @@ class CompleteMatchResultModel {
   int? totalWickets;
   int? totalBoundaries;
   int? totalSixes;
+  int? highestIndividualScore;
+  int? highestTeamScore;
+  
+  // Live match specific data
+  String? currentOverDisplay; // Current over balls display
+  int? currentInning; // 1 or 2
+  double? team1RunRate;
+  double? team2RunRate;
+  double? team2RequiredRunRate;
+  int? ballsRemaining;
+  int? runsToWin;
+  
+  // Team names for easier access
+  String? team1Name;
+  String? team2Name;
 
   CompleteMatchResultModel({
     this.matchId,
@@ -50,19 +60,57 @@ class CompleteMatchResultModel {
     this.playerOfTheMatchId,
     this.team1Innings,
     this.team2Innings,
-    this.team1Overs,
-    this.team2Overs,
     this.totalOvers,
     this.totalBalls,
     this.totalRuns,
     this.totalWickets,
     this.totalBoundaries,
     this.totalSixes,
+    this.highestIndividualScore,
+    this.highestTeamScore,
+    this.currentOverDisplay,
+    this.currentInning,
+    this.team1RunRate,
+    this.team2RunRate,
+    this.team2RequiredRunRate,
+    this.ballsRemaining,
+    this.runsToWin,
+    this.team1Name,
+    this.team2Name,
   });
 
   // Get match summary for display
   String get matchSummary {
     if (resultDescription != null) return resultDescription!;
+
+    // If match is live, show live status
+    if (status?.toLowerCase() == 'live') {
+      if (currentInning == 1) {
+        String team1Score = team1Innings != null 
+            ? "${team1Innings!.totalRuns ?? 0}/${team1Innings!.wickets ?? 0}"
+            : "0/0";
+        String team1OversText = team1Innings != null 
+            ? " (${team1Innings!.oversDisplay})" 
+            : "";
+        return "$team1Name: $team1Score$team1OversText - Live";
+      } else {
+        String team1Score = team1Innings != null 
+            ? "${team1Innings!.totalRuns ?? 0}/${team1Innings!.wickets ?? 0}"
+            : "0/0";
+        String team2Score = team2Innings != null 
+            ? "${team2Innings!.totalRuns ?? 0}/${team2Innings!.wickets ?? 0}"
+            : "0/0";
+        String team2OversText = team2Innings != null 
+            ? " (${team2Innings!.oversDisplay})" 
+            : "";
+        
+        if (runsToWin != null && runsToWin! > 0) {
+          return "$team2Name: $team2Score$team2OversText - Need $runsToWin runs - Live";
+        } else {
+          return "$team2Name: $team2Score$team2OversText - Live";
+        }
+      }
+    }
 
     if (winnerTeamName != null) {
       // Try to calculate margin of victory
@@ -102,32 +150,61 @@ class CompleteMatchResultModel {
     return false;
   }
 
-  // Get highest team score
-  int get highestTeamScore {
+  // Get highest team score (override getter to use stored value or calculate)
+  int get calculatedHighestTeamScore {
+    if (highestTeamScore != null) return highestTeamScore!;
     int team1Score = team1Innings?.totalRuns ?? 0;
     int team2Score = team2Innings?.totalRuns ?? 0;
     return team1Score > team2Score ? team1Score : team2Score;
   }
 
-  // Get highest individual score in match
-  int get highestIndividualScore {
+  // Get highest individual score in match (override getter to use stored value or calculate)
+  int get calculatedHighestIndividualScore {
+    if (highestIndividualScore != null) return highestIndividualScore!;
     int team1Highest = team1Innings?.highestScore ?? 0;
     int team2Highest = team2Innings?.highestScore ?? 0;
     return team1Highest > team2Highest ? team1Highest : team2Highest;
   }
 
-  // Get total boundaries in match
-  int get calculatedTotalBoundaries {
-    if (totalBoundaries != null) return totalBoundaries!;
+  // Check if match is live
+  bool get isLive {
+    return status?.toLowerCase() == 'live';
+  }
 
-    int boundaries = 0;
-    if (team1Overs != null) {
-      boundaries += team1Overs!.fold(0, (sum, over) => sum + over.boundaries);
-    }
-    if (team2Overs != null) {
-      boundaries += team2Overs!.fold(0, (sum, over) => sum + over.boundaries);
-    }
-    return boundaries;
+  // Check if match is completed
+  bool get isCompleted {
+    return status?.toLowerCase() == 'completed';
+  }
+
+  // Get current batting team name
+  String get currentBattingTeam {
+    if (currentInning == 1) return team1Name ?? 'Team 1';
+    if (currentInning == 2) return team2Name ?? 'Team 2';
+    return 'Unknown';
+  }
+
+  // Get current bowling team name
+  String get currentBowlingTeam {
+    if (currentInning == 1) return team2Name ?? 'Team 2';
+    if (currentInning == 2) return team1Name ?? 'Team 1';
+    return 'Unknown';
+  }
+
+  // Get match total boundaries (both teams)
+  int get calculatedMatchBoundaries {
+    if (totalBoundaries != null) return totalBoundaries!;
+    return (team1Innings?.totalBoundaries ?? 0) + (team2Innings?.totalBoundaries ?? 0);
+  }
+
+  // Get match total sixes (both teams)
+  int get calculatedMatchSixes {
+    if (totalSixes != null) return totalSixes!;
+    return (team1Innings?.totalSixes ?? 0) + (team2Innings?.totalSixes ?? 0);
+  }
+
+  // Get total boundaries in match (simplified - removed overs dependency)
+  int get calculatedTotalBoundaries {
+    return calculatedMatchBoundaries;
   }
 
   // Get match format display
@@ -222,24 +299,23 @@ class CompleteMatchResultModel {
           json['team2Innings'] != null
               ? TeamInningsResultModel.fromJson(json['team2Innings'])
               : null,
-      team1Overs:
-          json['team1Overs'] != null
-              ? List<OverSummaryModel>.from(
-                json['team1Overs'].map((x) => OverSummaryModel.fromJson(x)),
-              )
-              : null,
-      team2Overs:
-          json['team2Overs'] != null
-              ? List<OverSummaryModel>.from(
-                json['team2Overs'].map((x) => OverSummaryModel.fromJson(x)),
-              )
-              : null,
       totalOvers: toInt(json['totalOvers']),
       totalBalls: toInt(json['totalBalls']),
       totalRuns: toInt(json['totalRuns']),
       totalWickets: toInt(json['totalWickets']),
       totalBoundaries: toInt(json['totalBoundaries']),
       totalSixes: toInt(json['totalSixes']),
+      highestIndividualScore: toInt(json['highestIndividualScore']),
+      highestTeamScore: toInt(json['highestTeamScore']),
+      currentOverDisplay: json['currentOverDisplay'] as String?,
+      currentInning: toInt(json['currentInning']),
+      team1RunRate: (json['team1RunRate'] as num?)?.toDouble(),
+      team2RunRate: (json['team2RunRate'] as num?)?.toDouble(),
+      team2RequiredRunRate: (json['team2RequiredRunRate'] as num?)?.toDouble(),
+      ballsRemaining: toInt(json['ballsRemaining']),
+      runsToWin: toInt(json['runsToWin']),
+      team1Name: json['team1Name'] as String?,
+      team2Name: json['team2Name'] as String?,
     );
   }
 
@@ -262,14 +338,23 @@ class CompleteMatchResultModel {
       'playerOfTheMatchId': playerOfTheMatchId,
       'team1Innings': team1Innings?.toJson(),
       'team2Innings': team2Innings?.toJson(),
-      'team1Overs': team1Overs?.map((over) => over.toJson()).toList(),
-      'team2Overs': team2Overs?.map((over) => over.toJson()).toList(),
       'totalOvers': totalOvers,
       'totalBalls': totalBalls,
       'totalRuns': totalRuns,
       'totalWickets': totalWickets,
-      'totalBoundaries': totalBoundaries ?? calculatedTotalBoundaries,
-      'totalSixes': totalSixes,
+      'totalBoundaries': totalBoundaries ?? calculatedMatchBoundaries,
+      'totalSixes': totalSixes ?? calculatedMatchSixes,
+      'highestIndividualScore': highestIndividualScore ?? calculatedHighestIndividualScore,
+      'highestTeamScore': highestTeamScore ?? calculatedHighestTeamScore,
+      'currentOverDisplay': currentOverDisplay,
+      'currentInning': currentInning,
+      'team1RunRate': team1RunRate,
+      'team2RunRate': team2RunRate,
+      'team2RequiredRunRate': team2RequiredRunRate,
+      'ballsRemaining': ballsRemaining,
+      'runsToWin': runsToWin,
+      'team1Name': team1Name,
+      'team2Name': team2Name,
     };
   }
 
