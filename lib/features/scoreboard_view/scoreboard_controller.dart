@@ -69,12 +69,6 @@ class ScoreboardController extends GetxController with DebouncingMixin {
   bool get isMatchCompleted => _matchCompleted.value;
   bool get userChoseStayAfterMatchEnd => _userChoseStayAfterMatchEnd.value;
 
-  /// Manually clear over completion state (for emergency reset)
-  void clearOverCompletionState() {
-    _overCompleted.value = false;
-    _bowlerSelectionRetryCount.value = 0;
-    log('🔄 Over completion state manually cleared');
-  }
 
   // Match completion tracking
   final RxBool _matchCompleted = false.obs;
@@ -105,9 +99,6 @@ class ScoreboardController extends GetxController with DebouncingMixin {
       inningNo.value = matchModel.inningNo ?? 1;
       wideRun = matchModel.wideRun ?? 0;
       noBallRun = matchModel.noBallRun ?? 0;
-      log(
-        '🎛️ Extras loaded from match: wideRun=$wideRun, noBallRun=$noBallRun',
-      );
 
       // Set team IDs and names
       team1Id.value = matchModel.team1 ?? 0;
@@ -122,24 +113,9 @@ class ScoreboardController extends GetxController with DebouncingMixin {
       }
 
       // Set player info with enhanced error handling and retry logic
-      log('🚀 Starting player info initialization...');
-      log(
-        '📋 Match player IDs - Striker: ${matchModel.strikerBatsmanId}, Non-Striker: ${matchModel.nonStrikerBatsmanId}, Bowler: ${matchModel.bowlerId}',
-      );
-
-      // Debug match data before initialization
-      _debugMatchData();
 
       // Initialize player info with retry mechanism
       await _initializePlayerInfoWithRetry();
-
-      log('✅ Player info initialization complete');
-      log(
-        '🎯 Final player names - Striker: "${strikerBatsman.value}", Non-Striker: "${nonStrikerBatsman.value}", Bowler: "${bowler.value}"',
-      );
-
-      // Debug final state
-      _debugMatchData();
 
       // Update match status to live
       matchModel.status = 'live';
@@ -151,8 +127,6 @@ class ScoreboardController extends GetxController with DebouncingMixin {
 
       // Force UI refresh for player names with explicit updates
       _forcePlayerNameRefresh();
-
-      log('🔄 Final UI refresh completed for all player names');
     } catch (e) {
       errorMessage.value = "Failed to initialize match: ${e.toString()}";
       log('Error initializing ScoreboardController: $e');
@@ -168,7 +142,6 @@ class ScoreboardController extends GetxController with DebouncingMixin {
 
     for (int attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        log('🔄 Player initialization attempt $attempt/$maxRetries');
 
         // Set player IDs first (they should be available from the match model)
         strikerBatsmanId.value = matchModel.strikerBatsmanId ?? 0;
@@ -205,15 +178,7 @@ class ScoreboardController extends GetxController with DebouncingMixin {
             bowler.value != "Unknown Player";
 
         if (allPlayersLoaded) {
-          log('✅ All player names successfully loaded on attempt $attempt');
           return; // Success, exit retry loop
-        } else {
-          log(
-            '⚠️ Some player names failed to load on attempt $attempt. Retrying...',
-          );
-          log(
-            'Current state - Striker: "${strikerBatsman.value}", Non-Striker: "${nonStrikerBatsman.value}", Bowler: "${bowler.value}"',
-          );
         }
       } catch (e) {
         log('❌ Error in player initialization attempt $attempt: $e');
@@ -225,11 +190,8 @@ class ScoreboardController extends GetxController with DebouncingMixin {
       }
     }
 
-    // If we reach here, all retries failed - log final state
+    // If we reach here, all retries failed
     log('⚠️ Player initialization completed after $maxRetries attempts');
-    log(
-      'Final state - Striker: "${strikerBatsman.value}", Non-Striker: "${nonStrikerBatsman.value}", Bowler: "${bowler.value}"',
-    );
   }
 
   /// Force refresh of player name UI elements
@@ -243,29 +205,8 @@ class ScoreboardController extends GetxController with DebouncingMixin {
     strikerBatsmanId.refresh();
     nonStrikerBatsmanId.refresh();
     bowlerId.refresh();
-
-    log('🔄 Forced refresh of all player UI elements');
   }
 
-  /// Debug method to validate match data and player IDs
-  void _debugMatchData() {
-    log('🔍 Debug: Match data validation');
-    log('  Match ID: $matchId');
-    log('  Match Model Status: ${matchModel.status}');
-    log('  Team 1 ID: ${matchModel.team1}');
-    log('  Team 2 ID: ${matchModel.team2}');
-    log('  Current Batting Team ID: ${matchModel.currentBattingTeamId}');
-    log('  Striker Batsman ID: ${matchModel.strikerBatsmanId}');
-    log('  Non-Striker Batsman ID: ${matchModel.nonStrikerBatsmanId}');
-    log('  Bowler ID: ${matchModel.bowlerId}');
-    log('  Controller State:');
-    log('    Striker Name: "${strikerBatsman.value}"');
-    log('    Non-Striker Name: "${nonStrikerBatsman.value}"');
-    log('    Bowler Name: "${bowler.value}"');
-    log('    Striker ID: ${strikerBatsmanId.value}');
-    log('    Non-Striker ID: ${nonStrikerBatsmanId.value}');
-    log('    Bowler ID Controller: ${bowlerId.value}');
-  }
 
   Future<void> _setPlayerInfo(
     int? playerId,
@@ -280,16 +221,11 @@ class ScoreboardController extends GetxController with DebouncingMixin {
               ? 'Non-Striker'
               : 'Bowler';
 
-      log('🔄 Setting $playerRole info: playerId=$playerId');
-
       // Always set the ID first
       idRx.value = playerId ?? 0;
 
       if (idRx.value > 0) {
-        log('📡 Fetching name for $playerRole ID: ${idRx.value}');
         final playerName = await _repo.getPlayerName(idRx.value);
-
-        log('✅ $playerRole name fetched: "$playerName"');
 
         // Ensure we got a valid name
         if (playerName.isNotEmpty && playerName != "Unknown Player") {
@@ -303,13 +239,7 @@ class ScoreboardController extends GetxController with DebouncingMixin {
 
         // Force immediate UI update
         nameRx.refresh();
-        log(
-          '🔄 $playerRole RxString refreshed. Current value: "${nameRx.value}"',
-        );
       } else {
-        log(
-          '⚠️ $playerRole has invalid ID (${idRx.value}), setting as Unknown',
-        );
         nameRx.value = "Unknown Player";
         nameRx.refresh();
       }
@@ -345,10 +275,6 @@ class ScoreboardController extends GetxController with DebouncingMixin {
       if (_matchCompleted.value) {
         log('Match already completed - blocking run action');
         return;
-      }
-
-      if (_justSelectedNewBowler.value) {
-        _justSelectedNewBowler.value = false;
       }
 
       if (await _isMatchActionBlocked()) return;
@@ -388,9 +314,12 @@ class ScoreboardController extends GetxController with DebouncingMixin {
 
       // Add ball entry and immediately update UI state
       await _repo.addBallEntry(ballData);
-      log(
-        '✅ Ball added: runs=$totalRunsForBall (base=$runs, wide=${isWideLocal == 1 ? 'Y' : 'N'}, nb=${isNoBallLocal == 1 ? 'Y' : 'N'}, bye=${isByeLocal == 1 ? 'Y' : 'N'})',
-      );
+      
+      // Reset new bowler flag after a legal ball is delivered (not wide/no-ball)
+      if (_justSelectedNewBowler.value && isWideLocal != 1 && isNoBallLocal != 1) {
+        _justSelectedNewBowler.value = false;
+      }
+      
       _resetExtraSelections();
 
       // Update critical values immediately for fast UI response
@@ -414,9 +343,6 @@ class ScoreboardController extends GetxController with DebouncingMixin {
       }
 
       // ===== COMPREHENSIVE INNING COMPLETION CHECKS =====
-      log(
-        '🏏 Checking inning completion after ball - Current: ${currentOvers.value}/${totalOvers.value}, Wickets: ${wickets.value}',
-      );
 
       // First: Check for match end conditions (must be awaited to prevent concurrent dialogs)
       await _checkInningCompletionAfterBall();
@@ -449,10 +375,6 @@ class ScoreboardController extends GetxController with DebouncingMixin {
           return;
         }
 
-        if (_justSelectedNewBowler.value) {
-          _justSelectedNewBowler.value = false;
-        }
-
         if (await _isMatchActionBlocked()) return;
 
       final outPlayerId = strikerBatsmanId.value;
@@ -460,40 +382,24 @@ class ScoreboardController extends GetxController with DebouncingMixin {
       final battingTeamId = currentBattingTeamId.value;
 
       // STEP 1: Show confirmation dialog first
-      log(
-        '📋 WICKET FLOW STEP 1: Showing confirmation dialog for $outPlayerName',
-      );
       if (!await _showSimpleDialog(
         title: "Confirm Wicket",
         content: "$outPlayerName is out ($wicketType). Continue?",
         confirmText: "Confirm",
       )) {
-        log('❌ WICKET FLOW: User cancelled confirmation');
         return;
       }
-      log('✅ WICKET FLOW STEP 1: Confirmation received');
 
       // STEP 2: Check if this is the final wicket that will end the inning
       final totalPlayers = await _getCachedTeamSize(battingTeamId);
       final currentWickets = wickets.value;
       final isFinalWicket = (totalPlayers - 2) == currentWickets;
 
-      log(
-        '🔍 WICKET CHECK: Total players: $totalPlayers, Current wickets: $currentWickets',
-      );
-      log(
-        '🎯 WICKET CHECK: Is final wicket? $isFinalWicket (${totalPlayers - 2} === $currentWickets)',
-      );
-
       if (isFinalWicket) {
         // FINAL WICKET PATH: Skip player selection, record wicket and show completion dialog
-        log(
-          '🏁 WICKET FLOW: Final wicket detected - skipping player selection',
-        );
         await _handleFinalWicket(outPlayerId, outPlayerName, wicketType);
       } else {
         // REGULAR WICKET PATH: Show player selection then record wicket
-        log('👤 WICKET FLOW: Regular wicket - showing player selection');
         await _handleRegularWicket(outPlayerId, outPlayerName, wicketType);
       }
       } catch (e) {
@@ -511,7 +417,6 @@ class ScoreboardController extends GetxController with DebouncingMixin {
     String wicketType,
   ) async {
     try {
-      log('🏁 FINAL WICKET STEP 1: Recording final wicket for $outPlayerName');
 
       // Record the wicket directly (no new player needed since inning ends)
       final ballData = ScoreboardModel(
@@ -530,23 +435,12 @@ class ScoreboardController extends GetxController with DebouncingMixin {
       await _repo.addBallEntry(ballData);
       await _refreshAllCalculations();
 
-      log(
-        '✅ FINAL WICKET STEP 1: Final wicket recorded - $outPlayerName is out',
-      );
-
       // FINAL WICKET STEP 2: Show completion dialog immediately
-      log(
-        '🎯 FINAL WICKET STEP 2: Showing completion dialog (team is all out)',
-      );
       _matchCompleted.value = true;
 
       if (inningNo.value == 1) {
-        log(
-          '📋 FINAL WICKET: First inning all out - showing next inning dialog',
-        );
         await _showAllOutDialog();
       } else {
-        log('🏆 FINAL WICKET: Second inning all out - showing match result');
         await _handleSecondInningAllOut();
       }
     } catch (e) {
@@ -1069,14 +963,6 @@ class ScoreboardController extends GetxController with DebouncingMixin {
     }
   }
 
-  Future<void> _checkAllOutCondition() async {
-    try {
-      // Delegate to comprehensive check to avoid conflicts
-      await _checkInningCompletionAfterBall();
-    } catch (e) {
-      log('Error checking all-out condition: $e');
-    }
-  }
 
   /// Comprehensive inning completion check that runs after every ball/wicket
   Future<void> _checkInningCompletionAfterBall() async {
@@ -1215,11 +1101,6 @@ class ScoreboardController extends GetxController with DebouncingMixin {
     }
   }
 
-  /// Legacy method - kept for backward compatibility but simplified
-  Future<void> _checkMatchEndCondition() async {
-    // This now just delegates to the comprehensive check
-    await _checkInningCompletionAfterBall();
-  }
 
   Future<void> _showInningCompleteDialog() async {
     final battingTeamName =
@@ -1292,28 +1173,6 @@ class ScoreboardController extends GetxController with DebouncingMixin {
     return requiredWickets;
   }
 
-  /// DEBUG METHOD: Test team size query directly
-  Future<void> debugTestTeamSize() async {
-    final battingTeamId = currentBattingTeamId.value;
-    log('🧪 DEBUG TEST: Testing team size for team $battingTeamId');
-
-    try {
-      // List all players in the team
-      await _repo.debugListTeamPlayers(battingTeamId);
-
-      final teamSize = await _repo.getTeamSize(battingTeamId);
-      log('🧪 DEBUG RESULT: Team $battingTeamId has $teamSize players');
-      log(
-        '🧪 DEBUG CALCULATION: Required wickets = $teamSize - 1 = ${teamSize - 1}',
-      );
-      log('🧪 DEBUG CURRENT STATE: Current wickets = ${wickets.value}');
-      log(
-        '🧪 DEBUG CONDITION: ${wickets.value} >= ${teamSize - 1} = ${wickets.value >= (teamSize - 1)}',
-      );
-    } catch (e) {
-      log('🧪 DEBUG ERROR: $e');
-    }
-  }
 
   /// Specialized method to check inning completion after wicket and show appropriate dialogs
   /// This method is called after confirmation and player selection are complete

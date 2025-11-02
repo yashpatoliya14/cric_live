@@ -82,6 +82,7 @@ class AuthService {
 
   Future<dynamic> login(LoginModel data) async {
     try {
+      log("Called");
       Map<String, dynamic> result = await _apiServices.post(
         "/CL_Users/Login",
         data.toJson(),

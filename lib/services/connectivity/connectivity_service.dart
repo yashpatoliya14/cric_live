@@ -176,7 +176,7 @@ class ConnectivityService {
         ),
         actions: [
           TextButton(
-            onPressed: () => Get.back(result: false),
+            onPressed: () => Get.back(result: false,closeOverlays: false),
             child: Text(
               "Cancel",
               style: GoogleFonts.nunito(
@@ -186,7 +186,7 @@ class ConnectivityService {
             ),
           ),
           ElevatedButton.icon(
-            onPressed: () => Get.back(result: true),
+            onPressed: () => Get.back(result: true,closeOverlays: false),
             icon: const Icon(Icons.refresh, size: 18),
             label: Text(
               customAction ?? "Retry",

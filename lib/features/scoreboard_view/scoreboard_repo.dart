@@ -99,23 +99,18 @@ class ScoreboardRepository {
       Database db = await MyDatabase().database;
       
       // Use COUNT query for better performance and accuracy
-      log('💾 EXECUTING DATABASE QUERY: SELECT COUNT(*) FROM $TBL_TEAM_PLAYERS WHERE teamId = $teamId');
       final result = await db.rawQuery(
         'SELECT COUNT(*) as player_count FROM $TBL_TEAM_PLAYERS WHERE teamId = ?',
         [teamId],
       );
       
-      log('💾 RAW QUERY RESULT: $result');
       final playerCount = Sqflite.firstIntValue(result) ?? 0;
-      
-      log('🔢 Database query for team $teamId: Found $playerCount players');
       
       if (playerCount == 0) {
         log('⚠️ Warning: No players found for team $teamId, using default of 10');
         return 10; // Default to 10 if no players found
       }
       
-      log('✅ Team $teamId has $playerCount players. Match end condition: ${playerCount - 1} wickets');
       return playerCount;
       
     } catch (e) {
@@ -124,46 +119,7 @@ class ScoreboardRepository {
     }
   }
 
-  /// DEBUG METHOD: List all players for a team to verify database contents
-  Future<void> debugListTeamPlayers(int teamId) async {
-    try {
-      Database db = await MyDatabase().database;
-      
-      log('🔍 DEBUG: Listing all players for team $teamId');
-      final result = await db.query(
-        TBL_TEAM_PLAYERS,
-        where: 'teamId = ?',
-        whereArgs: [teamId],
-      );
-      
-      log('🔍 DEBUG: Found ${result.length} players in database:');
-      for (int i = 0; i < result.length; i++) {
-        final player = result[i];
-        log('🔍   Player ${i + 1}: ID=${player['teamPlayerId']}, Name=${player['playerName']}');
-      }
-      
-    } catch (e) {
-      log('🔍 DEBUG ERROR: $e');
-    }
-  }
 
-  Future<String?> getTeamNameOnline(int teamId) async {
-    ApiServices apiServices = ApiServices();
-    try {
-      Map<String, dynamic> data = await apiServices.get(
-        "/CL_Teams/GetTeamsById/$teamId",
-      );
-
-      return data["data"]["teamName"];
-    } catch (e) {
-      log("from team name from online ");
-      log(e.toString());
-      if (e.toString().contains("Server Error")) {
-        throw Exception("Server error");
-      }
-      return null;
-    }
-  }
   //endregion
 
   //region functions name (updateMatch(for local),shiftInning,endMatch) Match State & Inning Management
@@ -245,9 +201,6 @@ class ScoreboardRepository {
             totalWickets - secondInningWickets; // Use dynamic total wickets
         final winnerTeamName = await getTeamName(winnerTeamId!);
         result = "$winnerTeamName won by $margin wickets";
-        log(
-          '🏆 Winner calculation: $winnerTeamName won by $margin wickets (totalWickets: $totalWickets, secondInningWickets: $secondInningWickets)',
-        );
       } else {
         // Match tied
         winnerTeamId = null;

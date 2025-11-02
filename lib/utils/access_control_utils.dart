@@ -1,6 +1,5 @@
-import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-import '../features/tournament_view/user_role.dart';
+import 'package:cric_live/utils/import_exports.dart';
+import 'package:cric_live/features/tournament_view/user_role.dart';
 
 /// Utility class for handling access control throughout the app
 class AccessControlUtils {
@@ -14,15 +13,12 @@ class AccessControlUtils {
     String message = customMessage ?? 
       "Your current role${currentRole != null ? ' (${currentRole.displayText})' : ''} doesn't allow this action.";
     
-    Get.snackbar(
-      "Access Denied - $action",
-      message,
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: Colors.red.withOpacity(0.1),
-      colorText: Colors.red,
-      icon: Icon(Icons.block, color: Colors.red),
-      duration: Duration(seconds: 4),
-      margin: EdgeInsets.all(16),
+    showAppSnackBar(
+      title: "Access Denied - $action",
+      message: message,
+      type: AppSnackBarType.error,
+      icon: Icons.block,
+      duration: const Duration(seconds: 4),
     );
   }
 
@@ -31,15 +27,12 @@ class AccessControlUtils {
     required String title,
     required String message,
   }) {
-    Get.snackbar(
-      title,
-      message,
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: Colors.green.withOpacity(0.1),
-      colorText: Colors.green,
-      icon: Icon(Icons.check_circle, color: Colors.green),
-      duration: Duration(seconds: 3),
-      margin: EdgeInsets.all(16),
+    showAppSnackBar(
+      title: title,
+      message: message,
+      type: AppSnackBarType.success,
+      icon: Icons.check_circle,
+      duration: const Duration(seconds: 3),
     );
   }
 
@@ -48,15 +41,12 @@ class AccessControlUtils {
     required String title,
     required String message,
   }) {
-    Get.snackbar(
-      title,
-      message,
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: Colors.red.withOpacity(0.1),
-      colorText: Colors.red,
-      icon: Icon(Icons.error, color: Colors.red),
-      duration: Duration(seconds: 4),
-      margin: EdgeInsets.all(16),
+    showAppSnackBar(
+      title: title,
+      message: message,
+      type: AppSnackBarType.error,
+      icon: Icons.error,
+      duration: const Duration(seconds: 4),
     );
   }
 
@@ -65,15 +55,12 @@ class AccessControlUtils {
     required String title,
     required String message,
   }) {
-    Get.snackbar(
-      title,
-      message,
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: Colors.orange.withOpacity(0.1),
-      colorText: Colors.orange.shade700,
-      icon: Icon(Icons.warning, color: Colors.orange.shade700),
-      duration: Duration(seconds: 3),
-      margin: EdgeInsets.all(16),
+    showAppSnackBar(
+      title: title,
+      message: message,
+      type: AppSnackBarType.warning,
+      icon: Icons.warning,
+      duration: const Duration(seconds: 3),
     );
   }
 
@@ -135,73 +122,79 @@ class AccessControlUtils {
     required UserRole currentRole,
     required String tournamentName,
   }) {
-    Get.dialog(
-      AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Icon(
-              getRoleIcon(currentRole),
-              color: getRoleColor(currentRole),
-              size: 28,
+    showAppDialog(
+      title: 'Your Role',
+      titleWidget: Row(
+        children: [
+          Icon(
+            getRoleIcon(currentRole),
+            color: getRoleColor(currentRole),
+            size: 28,
+          ),
+          const SizedBox(width: 12),
+          const Text(
+            'Your Role',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 20,
             ),
-            SizedBox(width: 12),
-            Text(
-              'Your Role',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
-              ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: getRoleColor(currentRole).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: getRoleColor(currentRole).withOpacity(0.3),
-                ),
-              ),
-              child: Text(
-                currentRole.displayText,
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: getRoleColor(currentRole),
-                  fontSize: 16,
-                ),
-              ),
-            ),
-            SizedBox(height: 16),
-            Text(
-              'In "$tournamentName":',
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-              ),
-            ),
-            SizedBox(height: 8),
-            Text(
-              getRoleDescription(currentRole),
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey.shade700,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: Text('Got it'),
           ),
         ],
       ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: getRoleColor(currentRole).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: getRoleColor(currentRole).withOpacity(0.3),
+              ),
+            ),
+            child: Text(
+              currentRole.displayText,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: getRoleColor(currentRole),
+                fontSize: 16,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'In:',
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '"$tournamentName"',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey.shade700,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            getRoleDescription(currentRole),
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey.shade700,
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Get.back(),
+          child: const Text('Got it'),
+        ),
+      ],
     );
   }
 }

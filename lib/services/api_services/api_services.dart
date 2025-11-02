@@ -5,9 +5,9 @@ import 'package:flutter/foundation.dart';
 class ApiServices {
   static ApiServices get to => Get.find();
 
-  static const String baseUrl = "https://cric-live-backend.onrender.com/api";
+  static const String baseUrl = "http://10.50.172.147:2030/api";
   // static const String baseUrl = "https://10.159.105.147:5001/api";
-  // static const String baseUrl = "https://localhost:5001/api";
+  // static const String baseUrl = "http://localhost:2030/api";
   static const Duration _timeout = Duration(seconds: 30);
 
   // Create HTTP client that bypasses SSL certificate validation
@@ -90,15 +90,14 @@ class ApiServices {
     print('=== API GET Request ===');
     print('URL: $uri');
     print('Endpoint: $endpoint');
+    http.Client? client;
     try {
       // Use appropriate client based on build mode
-      final client = _getHttpClient();
+      client = _getHttpClient();
       final response = await client
           .get(uri, headers: _headers)
           .timeout(_timeout);
-      if (client is IOClient) {
-        client.close();
-      }
+      
       print('Response Status: ${response.statusCode}');
       if (!_isSuccessStatusCode(response.statusCode)) {
         print('Response Body: ${response.body}');
@@ -106,7 +105,11 @@ class ApiServices {
       } else {
         print('✅ API GET Success: ${response.statusCode}');
       }
-      return _handleResponse(response);
+      
+      // Read and process response before closing client
+      final result = _handleResponse(response);
+      
+      return result;
     } on SocketException {
       throw const SocketException('No Internet connection. Please try again.');
     } on HandshakeException {
@@ -119,6 +122,11 @@ class ApiServices {
       throw const FormatException('Invalid data received from the server.');
     } catch (e) {
       throw Exception('An unexpected error occurred: $e');
+    } finally {
+      // Close client in finally block to ensure it's closed after response is processed
+      if (client is IOClient) {
+        client.close();
+      }
     }
   }
 
@@ -128,17 +136,27 @@ class ApiServices {
     print('=== API POST Request ===');
     print('URL: $uri');
     print('Data: $data');
+    print('Headers: $_headers');
+    http.Client? client;
 
     try {
-      final client = _getHttpClient();
+      print('📡 Creating HTTP client...');
+      client = _getHttpClient();
+      print('✓ Client created, encoding body...');
+      final encodedBody = jsonEncode(data);
+      print('✓ Body encoded: $encodedBody');
+      print('🚀 Sending POST request...');
       final response = await client
-          .post(uri, headers: _headers, body: jsonEncode(data))
+          .post(uri, headers: _headers, body: encodedBody)
           .timeout(_timeout);
+      print('✓ Response received! Status: ${response.statusCode}');
 
-      if (client is IOClient) {
-        client.close();
-      }
-      return _handleResponse(response);
+      print('Response Body: ${response.body}');
+
+      // Read and process response before closing client
+      final result = _handleResponse(response);
+      
+      return result;
     } on SocketException {
       throw const SocketException('No Internet connection. Please try again.');
     } on HandshakeException {
@@ -151,6 +169,11 @@ class ApiServices {
       throw const FormatException('Invalid data received from the server.');
     } catch (e) {
       throw Exception('An unexpected error occurred: $e');
+    } finally {
+      // Close client in finally block to ensure it's closed after response is processed
+      if (client is IOClient) {
+        client.close();
+      }
     }
   }
 
@@ -163,16 +186,19 @@ class ApiServices {
     print('=== API PUT Request ===');
     print('URL: $uri');
     print('Data: $data');
+    http.Client? client;
     try {
-      final client = _getHttpClient();
+      client = _getHttpClient();
       final response = await client
           .put(uri, headers: _headers, body: jsonEncode(data))
           .timeout(_timeout);
-      if (client is IOClient) {
-        client.close();
-      }
+      
       print('Response Status: ${response.statusCode}');
-      return _handleResponse(response);
+      
+      // Read and process response before closing client
+      final result = _handleResponse(response);
+      
+      return result;
     } on SocketException {
       throw const SocketException('No Internet connection. Please try again.');
     } on HandshakeException {
@@ -185,6 +211,11 @@ class ApiServices {
       throw const FormatException('Invalid data received from the server.');
     } catch (e) {
       throw Exception('An unexpected error occurred: $e');
+    } finally {
+      // Close client in finally block to ensure it's closed after response is processed
+      if (client is IOClient) {
+        client.close();
+      }
     }
   }
 
@@ -193,16 +224,19 @@ class ApiServices {
     final uri = Uri.parse('$baseUrl$endpoint');
     print('=== API DELETE Request ===');
     print('URL: $uri');
+    http.Client? client;
     try {
-      final client = _getHttpClient();
+      client = _getHttpClient();
       final response = await client
           .delete(uri, headers: _headers)
           .timeout(_timeout);
-      if (client is IOClient) {
-        client.close();
-      }
+      
       print('Response Status: ${response.statusCode}');
-      return _handleResponse(response);
+      
+      // Read and process response before closing client
+      final result = _handleResponse(response);
+      
+      return result;
     } on SocketException {
       throw const SocketException('No Internet connection. Please try again.');
     } on HandshakeException {
@@ -215,6 +249,11 @@ class ApiServices {
       throw const FormatException('Invalid data received from the server.');
     } catch (e) {
       throw Exception('An unexpected error occurred: $e');
+    } finally {
+      // Close client in finally block to ensure it's closed after response is processed
+      if (client is IOClient) {
+        client.close();
+      }
     }
   }
 
@@ -228,14 +267,14 @@ class ApiServices {
     print('=== External API POST Request ===');
     print('URL: $uri');
     print('Data: $data');
+    IOClient? client;
 
     try {
-      final client = IOClient(_createInsecureHttpClient());
+      client = IOClient(_createInsecureHttpClient());
       final response = await client
           .post(uri, headers: _headers, body: jsonEncode(data))
           .timeout(_timeout);
 
-      client.close();
       print('Response Status: ${response.statusCode}');
       print('Response Body: ${response.body}');
 
@@ -245,7 +284,10 @@ class ApiServices {
         print('✅ External API POST Success: ${response.statusCode}');
       }
 
-      return _handleResponse(response);
+      // Read and process response before closing client
+      final result = _handleResponse(response);
+      
+      return result;
     } on SocketException {
       throw const SocketException('No Internet connection. Please try again.');
     } on HandshakeException {
@@ -258,6 +300,9 @@ class ApiServices {
       throw const FormatException('Invalid data received from the server.');
     } catch (e) {
       throw Exception('An unexpected error occurred: $e');
+    } finally {
+      // Close client in finally block to ensure it's closed after response is processed
+      client?.close();
     }
   }
 }

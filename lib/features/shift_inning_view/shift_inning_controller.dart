@@ -263,7 +263,7 @@ class ShiftInningController extends GetxController {
     // Force start the inning - no validation required
     log('Force starting second inning - players can be selected later');
     
-    getDialogBox(
+    showAppDialog(
       onMain: () async {
         try {
           isLoading.value = true;
