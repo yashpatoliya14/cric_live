@@ -134,26 +134,17 @@ class HistoryController extends GetxController {
       isLoading.value = true;
       error.value = "";
       
-      log('🔄 Refreshing user matches...');
       final fetchedMatches = await _repo.getUsersMatches();
       
       if (fetchedMatches != null) {
         matches.assignAll(
           fetchedMatches.where((match) {
-            // Only show completed matches in history
-            bool isCompleted =
-                match.status?.toLowerCase() == 'completed' ||
-                match.status?.toLowerCase() == 'scheduled' ||
-                match.status?.toLowerCase() == 'resume';
             
-            // For completed matches, we don't need matchState
-            // For scheduled/resume matches, we need matchState or it should be scheduled
             bool hasValidState = match.status?.toLowerCase() == 'completed' ||
                 match.matchState != null || 
                 match.status?.toLowerCase() == "scheduled";
 
-            log('🔍 Match ${match.id}: status=${match.status}, hasMatchState=${match.matchState != null}, isCompleted=$isCompleted, hasValidState=$hasValidState');
-            return isCompleted && hasValidState;
+            return hasValidState;
           }).toList(),
         );
         matches.refresh();

@@ -1,4 +1,4 @@
-# Scoreboard Module
+ Scoreboard Module
 
 ## Quick Links
 

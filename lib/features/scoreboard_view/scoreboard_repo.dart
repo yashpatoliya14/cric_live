@@ -4,6 +4,8 @@ import 'package:cric_live/utils/import_exports.dart';
 
 class ScoreboardRepository {
   final SyncFeature _syncFeature = SyncFeature();
+
+
   // region functions name(addBallEntry, undoBall)  Ball-by-Ball Actions whenever call these block of functions then we need to update State
   //=============================================================================================
 
@@ -249,22 +251,41 @@ class ScoreboardRepository {
     }
   }
 
-  /// Private helper to up date the serialized match state after any change.
+  /// Private helper to update the serialized match state after any change.
   Future<void> _updateMatchState(int matchId) async {
-    final db = await MyDatabase().database;
-    // Create ResultRepo instance locally to avoid circular dependency during initialization
-    final resultRepo = ResultRepo();
-    CompleteMatchResultModel? matchState = await resultRepo
-        .getCompleteMatchResult(matchId);
-    await db.update(
-      TBL_MATCHES,
-      {'matchState': jsonEncode(matchState?.toJson() ?? {})},
-      where: 'id = ?',
-      whereArgs: [matchId],
-    );
-    _syncFeature.checkConnectivity(
-      () => _syncFeature.updateMatch(matchId: matchId),
-    );
+    try {
+      final db = await MyDatabase().database;
+      // Create ResultRepo instance locally to avoid circular dependency during initialization
+      final resultRepo = ResultRepo();
+      CompleteMatchResultModel? matchState = await resultRepo
+          .getCompleteMatchResult(matchId);
+      
+      final matchStateJson = jsonEncode(matchState?.toJson() ?? {});
+      
+      // Check if JSON is too large (SQL Server NVARCHAR limit issues)
+      if (matchStateJson.length > 4000) {
+        log('⚠️ matchState JSON too large (${matchStateJson.length} chars), skipping local update');
+        // Only sync to backend, skip local database update
+        _syncFeature.checkConnectivity(
+          () => _syncFeature.updateMatch(matchId: matchId),
+        );
+        return;
+      }
+      
+      await db.update(
+        TBL_MATCHES,
+        {'matchState': matchStateJson},
+        where: 'id = ?',
+        whereArgs: [matchId],
+      );
+      
+      _syncFeature.checkConnectivity(
+        () => _syncFeature.updateMatch(matchId: matchId),
+      );
+    } catch (e) {
+      log('❌ Error updating match state: $e');
+      // Continue execution even if matchState update fails
+    }
   }
   //endregion
 

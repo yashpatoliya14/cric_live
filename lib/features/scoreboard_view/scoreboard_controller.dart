@@ -1,6 +1,6 @@
 // lib/features/scoreboard/controller/scoreboard_controller_optimized.dart
-
 import 'package:cric_live/utils/import_exports.dart';
+import 'scoreboard_helpers.dart';
 
 class ScoreboardController extends GetxController with DebouncingMixin {
   final int matchId;
@@ -15,6 +15,7 @@ class ScoreboardController extends GetxController with DebouncingMixin {
   late MatchModel matchModel;
   int wideRun = 0;
   int noBallRun = 0;
+  int totalPlayers = 0;
 
   // Match-level state
   final RxInt totalOvers = 0.obs;
@@ -30,6 +31,7 @@ class ScoreboardController extends GetxController with DebouncingMixin {
   final RxString team2 = "Team B".obs;
   final RxInt team1Id = 0.obs;
   final RxInt team2Id = 0.obs;
+
   final RxInt currentBattingTeamId = 0.obs;
 
   // Player state
@@ -86,7 +88,7 @@ class ScoreboardController extends GetxController with DebouncingMixin {
   }
 
   //==========================================================================
-  //region Initialization
+  //region Initialization  (three methods initialize a player and matches)
   //==========================================================================
 
   Future<void> initializeMatch() async {
@@ -107,26 +109,24 @@ class ScoreboardController extends GetxController with DebouncingMixin {
       team1.value = await _repo.getTeamName(team1Id.value);
       team2.value = await _repo.getTeamName(team2Id.value);
 
+
       // If it's the 2nd inning, fetch the target score
       if (inningNo.value == 2) {
         firstInningScore.value = await _repo.getFirstInningScore(matchId);
       }
 
-      // Set player info with enhanced error handling and retry logic
-
-      // Initialize player info with retry mechanism
-      await _initializePlayerInfoWithRetry();
+      // Initialize player info
+      totalPlayers = await _repo.getTeamSize(currentBattingTeamId.value);
+      await _initializePlayerInfo();
 
       // Update match status to live
       matchModel.status = 'live';
       await _repo.updateMatch(matchModel);
 
       _teamWinDialogShown.value = false;
-      _overCompleted.value = false; // Reset over completion state
+      _overCompleted.value = false;
       await _refreshAllCalculations();
 
-      // Force UI refresh for player names with explicit updates
-      _forcePlayerNameRefresh();
     } catch (e) {
       errorMessage.value = "Failed to initialize match: ${e.toString()}";
       log('Error initializing ScoreboardController: $e');
@@ -135,124 +135,42 @@ class ScoreboardController extends GetxController with DebouncingMixin {
     }
   }
 
-  /// New method to initialize player info with retry mechanism
-  Future<void> _initializePlayerInfoWithRetry() async {
-    const maxRetries = 3;
-    const retryDelay = Duration(milliseconds: 500);
+  /// Initialize player information
+  Future<void> _initializePlayerInfo() async {
+    // Set player IDs
+    strikerBatsmanId.value = matchModel.strikerBatsmanId ?? 0;
+    nonStrikerBatsmanId.value = matchModel.nonStrikerBatsmanId ?? 0;
+    bowlerId.value = matchModel.bowlerId ?? 0;
 
-    for (int attempt = 1; attempt <= maxRetries; attempt++) {
+    // Fetch player names
+    await _setPlayerInfo(
+      matchModel.strikerBatsmanId,
+      strikerBatsman,
+      strikerBatsmanId,
+    );
+
+    await _setPlayerInfo(
+      matchModel.nonStrikerBatsmanId,
+      nonStrikerBatsman,
+      nonStrikerBatsmanId,
+    );
+
+    await _setPlayerInfo(matchModel.bowlerId, bowler, bowlerId);
+  }
+
+
+  Future<void> _setPlayerInfo(int? playerId, RxString nameRx, RxInt idRx,) async {
+    idRx.value = playerId ?? 0;
+
+    if (idRx.value > 0) {
       try {
-
-        // Set player IDs first (they should be available from the match model)
-        strikerBatsmanId.value = matchModel.strikerBatsmanId ?? 0;
-        nonStrikerBatsmanId.value = matchModel.nonStrikerBatsmanId ?? 0;
-        bowlerId.value = matchModel.bowlerId ?? 0;
-
-        // Clear any existing "Unknown Player" values
-        strikerBatsman.value = "";
-        nonStrikerBatsman.value = "";
-        bowler.value = "";
-
-        // Attempt to fetch player names sequentially to avoid race conditions
-        await _setPlayerInfo(
-          matchModel.strikerBatsmanId,
-          strikerBatsman,
-          strikerBatsmanId,
-        );
-
-        await _setPlayerInfo(
-          matchModel.nonStrikerBatsmanId,
-          nonStrikerBatsman,
-          nonStrikerBatsmanId,
-        );
-
-        await _setPlayerInfo(matchModel.bowlerId, bowler, bowlerId);
-
-        // Check if all names were successfully loaded
-        bool allPlayersLoaded =
-            strikerBatsman.value.isNotEmpty &&
-            strikerBatsman.value != "Unknown Player" &&
-            nonStrikerBatsman.value.isNotEmpty &&
-            nonStrikerBatsman.value != "Unknown Player" &&
-            bowler.value.isNotEmpty &&
-            bowler.value != "Unknown Player";
-
-        if (allPlayersLoaded) {
-          return; // Success, exit retry loop
-        }
+        nameRx.value = await _repo.getPlayerName(idRx.value);
       } catch (e) {
-        log('❌ Error in player initialization attempt $attempt: $e');
-      }
-
-      // Wait before retrying (except on last attempt)
-      if (attempt < maxRetries) {
-        await Future.delayed(retryDelay);
-      }
-    }
-
-    // If we reach here, all retries failed
-    log('⚠️ Player initialization completed after $maxRetries attempts');
-  }
-
-  /// Force refresh of player name UI elements
-  void _forcePlayerNameRefresh() {
-    // Force immediate UI updates
-    strikerBatsman.refresh();
-    nonStrikerBatsman.refresh();
-    bowler.refresh();
-
-    // Also refresh the IDs to ensure consistency
-    strikerBatsmanId.refresh();
-    nonStrikerBatsmanId.refresh();
-    bowlerId.refresh();
-  }
-
-
-  Future<void> _setPlayerInfo(
-    int? playerId,
-    RxString nameRx,
-    RxInt idRx,
-  ) async {
-    try {
-      final playerRole =
-          nameRx == strikerBatsman
-              ? 'Striker'
-              : nameRx == nonStrikerBatsman
-              ? 'Non-Striker'
-              : 'Bowler';
-
-      // Always set the ID first
-      idRx.value = playerId ?? 0;
-
-      if (idRx.value > 0) {
-        final playerName = await _repo.getPlayerName(idRx.value);
-
-        // Ensure we got a valid name
-        if (playerName.isNotEmpty && playerName != "Unknown Player") {
-          nameRx.value = playerName;
-        } else {
-          log(
-            '⚠️ $playerRole name fetch returned invalid result: "$playerName"',
-          );
-          nameRx.value = "Unknown Player";
-        }
-
-        // Force immediate UI update
-        nameRx.refresh();
-      } else {
+        log('Error fetching player name for ID ${idRx.value}: $e');
         nameRx.value = "Unknown Player";
-        nameRx.refresh();
       }
-    } catch (e) {
-      final playerRole =
-          nameRx == strikerBatsman
-              ? 'Striker'
-              : nameRx == nonStrikerBatsman
-              ? 'Non-Striker'
-              : 'Bowler';
-      log('❌ Error setting $playerRole info: $e');
+    } else {
       nameRx.value = "Unknown Player";
-      nameRx.refresh();
     }
   }
   //endregion
@@ -265,26 +183,16 @@ class ScoreboardController extends GetxController with DebouncingMixin {
     if (isDebouncing('onTapRun')) return;
 
     debounceTap('onTapRun', () async {
-      // Block actions if match is completed and user chose to stay
       if (_matchCompleted.value && _userChoseStayAfterMatchEnd.value) {
         _showMatchCompletedMessage();
         return;
       }
 
-      // Block actions if match is already completed
-      if (_matchCompleted.value) {
-        log('Match already completed - blocking run action');
-        return;
-      }
-
       if (await _isMatchActionBlocked()) return;
 
-      // Prepare ball data
+      // Calculate total runs with extras
       int totalRunsForBall = runs;
       int? isWideLocal, isNoBallLocal, isByeLocal;
-      log(
-        '🧮 Pre-run: baseRuns=$runs, wideSelected=${isWideSelected.value}, noBallSelected=${isNoBallSelected.value}, byeSelected=${isByeSelected.value}, config(wide=$wideRun, nb=$noBallRun)',
-      );
 
       if (isNoBallSelected.value) {
         totalRunsForBall += noBallRun;
@@ -298,7 +206,8 @@ class ScoreboardController extends GetxController with DebouncingMixin {
         isByeLocal = 1;
       }
 
-      final ballData = ScoreboardModel(
+      // Add ball entry
+      await _repo.addBallEntry(ScoreboardModel(
         totalOvers: totalOvers.value,
         strikerBatsmanId: strikerBatsmanId.value,
         nonStrikerBatsmanId: nonStrikerBatsmanId.value,
@@ -310,58 +219,33 @@ class ScoreboardController extends GetxController with DebouncingMixin {
         isNoBall: isNoBallLocal,
         isBye: isByeLocal,
         currentOvers: currentOvers.value,
-      );
-
-      // Add ball entry and immediately update UI state
-      await _repo.addBallEntry(ballData);
+      ));
       
-      // Reset new bowler flag after a legal ball is delivered (not wide/no-ball)
       if (_justSelectedNewBowler.value && isWideLocal != 1 && isNoBallLocal != 1) {
         _justSelectedNewBowler.value = false;
       }
       
       _resetExtraSelections();
+      _updateCriticalStatsImmediately(totalRunsForBall, isWideLocal, isNoBallLocal);
 
-      // Update critical values immediately for fast UI response
-      _updateCriticalStatsImmediately(
-        totalRunsForBall,
-        isWideLocal,
-        isNoBallLocal,
-      );
-
-      // Update batsman stats immediately (only for clean deliveries)
       if (isWideLocal != 1 && isNoBallLocal != 1 && isByeLocal != 1) {
         _updateBatsmanStatsImmediately(runs);
       }
 
-      // Run full calculations in background
       unawaited(_refreshAllCalculationsOptimized());
 
-      // Swap strike if needed
-      if ([1, 3, 5].contains(runs) && isByeSelected.value == false) {
+      if (ScoreboardHelpers.shouldRotateStrike(runs, isByeSelected.value)) {
         onTapSwap();
       }
 
-      // ===== COMPREHENSIVE INNING COMPLETION CHECKS =====
-
-      // First: Check for match end conditions (must be awaited to prevent concurrent dialogs)
       await _checkInningCompletionAfterBall();
-
-      // Second: Check winner in 2nd inning (only if match hasn't ended and dialog not shown)
-      if (inningNo.value == 2 &&
-          !_teamWinDialogShown.value &&
-          !_matchCompleted.value) {
+      
+      if (inningNo.value == 2 && !_teamWinDialogShown.value && !_matchCompleted.value) {
         await _checkSecondInningResult();
       }
-    }, delay: const Duration(milliseconds: 50));
+    }, delay: const Duration(milliseconds: 100));
   }
 
-  /// IMPROVED WICKET FLOW:
-  /// 1. Show confirmation dialog first
-  /// 2. Check if this is the final wicket (total players - 2 === current wickets)
-  /// 3a. If final wicket: Record wicket and show completion/shift inning dialog directly
-  /// 3b. If not final wicket: Show player selection, then record wicket
-  /// 4. Show appropriate dialog based on match state
   Future<void> onTapWicket({required String wicketType}) async {
     if (isDebouncing('onTapWicket')) return;
 
@@ -369,7 +253,6 @@ class ScoreboardController extends GetxController with DebouncingMixin {
       try {
         isWicketLoading.value = true;
         
-        // Block actions if match is completed and user chose to stay
         if (_matchCompleted.value && _userChoseStayAfterMatchEnd.value) {
           _showMatchCompletedMessage();
           return;
@@ -377,132 +260,89 @@ class ScoreboardController extends GetxController with DebouncingMixin {
 
         if (await _isMatchActionBlocked()) return;
 
-      final outPlayerId = strikerBatsmanId.value;
-      final outPlayerName = strikerBatsman.value;
-      final battingTeamId = currentBattingTeamId.value;
+        final outPlayerId = strikerBatsmanId.value;
+        final outPlayerName = strikerBatsman.value;
 
-      // STEP 1: Show confirmation dialog first
-      if (!await _showSimpleDialog(
-        title: "Confirm Wicket",
-        content: "$outPlayerName is out ($wicketType). Continue?",
-        confirmText: "Confirm",
-      )) {
-        return;
-      }
+        if (!await _showSimpleDialog(
+          title: "Confirm Wicket",
+          content: "$outPlayerName is out ($wicketType). Continue?",
+          confirmText: "Confirm",
+        )) {
+          return;
+        }
 
-      // STEP 2: Check if this is the final wicket that will end the inning
-      final totalPlayers = await _getCachedTeamSize(battingTeamId);
-      final currentWickets = wickets.value;
-      final isFinalWicket = (totalPlayers - 2) == currentWickets;
 
-      if (isFinalWicket) {
-        // FINAL WICKET PATH: Skip player selection, record wicket and show completion dialog
-        await _handleFinalWicket(outPlayerId, outPlayerName, wicketType);
-      } else {
-        // REGULAR WICKET PATH: Show player selection then record wicket
-        await _handleRegularWicket(outPlayerId, outPlayerName, wicketType);
-      }
+        final isFinalWicket = (totalPlayers - 2) == wickets.value;
+
+        if (isFinalWicket) {
+          await _handleFinalWicket(outPlayerId, outPlayerName, wicketType);
+        } else {
+          await _handleRegularWicket(outPlayerId, outPlayerName, wicketType);
+        }
       } catch (e) {
-        log('❌ Error in onTapWicket: $e');
+        log('Error in onTapWicket: $e');
       } finally {
         isWicketLoading.value = false;
       }
     }, delay: const Duration(milliseconds: 600));
   }
 
-  /// Handle final wicket that will end the inning (no player selection needed)
   Future<void> _handleFinalWicket(
     int outPlayerId,
     String outPlayerName,
     String wicketType,
   ) async {
-    try {
+    await _repo.addBallEntry(ScoreboardModel(
+      strikerBatsmanId: outPlayerId,
+      nonStrikerBatsmanId: nonStrikerBatsmanId.value,
+      bowlerId: bowlerId.value,
+      matchId: matchId,
+      inningNo: inningNo.value,
+      isWicket: 1,
+      wicketType: wicketType,
+      currentOvers: currentOvers.value,
+      totalOvers: totalOvers.value,
+      runs: 0,
+    ));
+    
+    await _refreshAllCalculations();
+    _matchCompleted.value = true;
 
-      // Record the wicket directly (no new player needed since inning ends)
-      final ballData = ScoreboardModel(
-        strikerBatsmanId: outPlayerId,
-        nonStrikerBatsmanId: nonStrikerBatsmanId.value,
-        bowlerId: bowlerId.value,
-        matchId: matchId,
-        inningNo: inningNo.value,
-        isWicket: 1,
-        wicketType: wicketType,
-        currentOvers: currentOvers.value,
-        totalOvers: totalOvers.value,
-        runs: 0,
-      );
-
-      await _repo.addBallEntry(ballData);
-      await _refreshAllCalculations();
-
-      // FINAL WICKET STEP 2: Show completion dialog immediately
-      _matchCompleted.value = true;
-
-      if (inningNo.value == 1) {
-        await _showAllOutDialog();
-      } else {
-        await _handleSecondInningAllOut();
-      }
-    } catch (e) {
-      log('❌ Error in _handleFinalWicket: $e');
+    if (inningNo.value == 1) {
+      await _showAllOutDialog();
+    } else {
+      await _handleSecondInningAllOut();
     }
   }
 
-  /// Handle regular wicket that requires player selection
   Future<void> _handleRegularWicket(
     int outPlayerId,
     String outPlayerName,
     String wicketType,
   ) async {
-    try {
-      // REGULAR WICKET STEP 1: Show player selection dialog
-      log('👤 REGULAR WICKET STEP 1: Showing player selection dialog');
-      final newPlayer = await _selectNewPlayer();
-      if (newPlayer == null) {
-        log('❌ REGULAR WICKET: Player selection was cancelled');
-        return;
-      }
-      log('✅ REGULAR WICKET STEP 1: Player selected - ${newPlayer.playerName}');
+    final newPlayer = await _selectNewPlayer();
+    if (newPlayer == null) return;
 
-      // REGULAR WICKET STEP 2: Record the wicket and update match state
-      log(
-        '💾 REGULAR WICKET STEP 2: Recording wicket and updating match state',
-      );
-      final ballData = ScoreboardModel(
-        strikerBatsmanId: outPlayerId,
-        nonStrikerBatsmanId: nonStrikerBatsmanId.value,
-        bowlerId: bowlerId.value,
-        matchId: matchId,
-        inningNo: inningNo.value,
-        isWicket: 1,
-        wicketType: wicketType,
-        currentOvers: currentOvers.value,
-        totalOvers: totalOvers.value,
-        runs: 0,
-      );
+    await _repo.addBallEntry(ScoreboardModel(
+      strikerBatsmanId: outPlayerId,
+      nonStrikerBatsmanId: nonStrikerBatsmanId.value,
+      bowlerId: bowlerId.value,
+      matchId: matchId,
+      inningNo: inningNo.value,
+      isWicket: 1,
+      wicketType: wicketType,
+      currentOvers: currentOvers.value,
+      totalOvers: totalOvers.value,
+      runs: 0,
+    ));
 
-      await _repo.addBallEntry(ballData);
-
-      // Update striker to new player
-      strikerBatsman.value = newPlayer.playerName ?? "Unknown";
-      strikerBatsmanId.value = newPlayer.teamPlayerId ?? 0;
-
-      // Update match state
-      matchModel.strikerBatsmanId = strikerBatsmanId.value;
-      await _repo.updateMatch(matchModel);
-
-      await _refreshAllCalculations();
-
-      log(
-        '✅ REGULAR WICKET STEP 2: Wicket recorded - $outPlayerName is out, ${newPlayer.playerName} is now batting',
-      );
-
-      // REGULAR WICKET STEP 3: Check for any other match completion conditions
-      log('🔍 REGULAR WICKET STEP 3: Checking for other completion conditions');
-      await _checkWicketInningCompletionAndShowDialog();
-    } catch (e) {
-      log('❌ Error in _handleRegularWicket: $e');
-    }
+    strikerBatsman.value = newPlayer.playerName ?? "Unknown";
+    strikerBatsmanId.value = newPlayer.teamPlayerId ?? 0;
+    matchModel.strikerBatsmanId = strikerBatsmanId.value;
+    
+    await _repo.updateMatch(matchModel);
+    await _refreshAllCalculations();
+    await _checkWicketInningCompletionAndShowDialog();
   }
 
   Future<void> undoBall() async {
@@ -516,7 +356,6 @@ class ScoreboardController extends GetxController with DebouncingMixin {
 
         ScoreboardModel? lastEntry = await _repo.undoBall();
 
-        // Reset win dialog flag, match completion, and over completion when undoing - allows dialog to show again if team wins
         _teamWinDialogShown.value = false;
         _matchCompleted.value = false;
         _matchEndDialogShown.value = false;
@@ -524,9 +363,6 @@ class ScoreboardController extends GetxController with DebouncingMixin {
         _overCompleted.value = false;
 
         await _refreshAllCalculations();
-
-        log('🔄 After undo - checking if inning completion status changed');
-        // Check if undo changed inning completion status
         await _checkInningCompletionAfterBall();
 
         if (lastEntry != null) {
@@ -536,44 +372,20 @@ class ScoreboardController extends GetxController with DebouncingMixin {
           if (bowlerChanged && currentLegalBalls <= 1) {
             final shouldRestore = await _showSimpleDialog(
               title: "Restore Previous Over?",
-              content:
-                  "Undo went back to previous over. Restore $currentBowlerName → ${await _repo.getPlayerName(restoredBowlerId)}?",
+              content: "Undo went back to previous over. Restore $currentBowlerName → ${await _repo.getPlayerName(restoredBowlerId)}?",
               confirmText: "Restore",
             );
 
             if (shouldRestore) {
               await _restorePreviousOverState(lastEntry);
             } else {
-              await _setPlayerInfo(
-                lastEntry.strikerBatsmanId,
-                strikerBatsman,
-                strikerBatsmanId,
-              );
-              await _setPlayerInfo(
-                lastEntry.nonStrikerBatsmanId,
-                nonStrikerBatsman,
-                nonStrikerBatsmanId,
-              );
-              log(
-                'Undo complete: Previous ball undone. Current bowler ($currentBowlerName) maintained.',
-              );
+              await _setPlayerInfo(lastEntry.strikerBatsmanId, strikerBatsman, strikerBatsmanId);
+              await _setPlayerInfo(lastEntry.nonStrikerBatsmanId, nonStrikerBatsman, nonStrikerBatsmanId);
             }
           } else {
-            log('🔄 Restoring player info after undo (no over change)');
-            await _setPlayerInfo(
-              lastEntry.strikerBatsmanId,
-              strikerBatsman,
-              strikerBatsmanId,
-            );
-            await _setPlayerInfo(
-              lastEntry.nonStrikerBatsmanId,
-              nonStrikerBatsman,
-              nonStrikerBatsmanId,
-            );
+            await _setPlayerInfo(lastEntry.strikerBatsmanId, strikerBatsman, strikerBatsmanId);
+            await _setPlayerInfo(lastEntry.nonStrikerBatsmanId, nonStrikerBatsman, nonStrikerBatsmanId);
             await _setPlayerInfo(lastEntry.bowlerId, bowler, bowlerId);
-            log(
-              '✅ Player info restored after undo - Striker: "${strikerBatsman.value}", Non-Striker: "${nonStrikerBatsman.value}", Bowler: "${bowler.value}"',
-            );
           }
         }
       } catch (e) {
@@ -623,6 +435,9 @@ class ScoreboardController extends GetxController with DebouncingMixin {
   //region Inning & Match Flow
   //==========================================================================
 
+
+  // two way 1. all players are out or
+  //         2.over is completed
   Future<bool> _isCurrentInningFinished() async {
     bool oversFinished =
         (await _repo.calculateCurrentOvers(matchId, inningNo.value)) >=
@@ -632,9 +447,6 @@ class ScoreboardController extends GetxController with DebouncingMixin {
     final requiredWickets = await _getRequiredWicketsForMatchEnd(battingTeamId);
     bool allOut = wickets.value >= requiredWickets;
 
-    log(
-      '🔍 _isCurrentInningFinished check: ${wickets.value} wickets >= $requiredWickets required = $allOut',
-    );
     return oversFinished || allOut;
   }
 
@@ -653,18 +465,13 @@ class ScoreboardController extends GetxController with DebouncingMixin {
   }
 
   Future<bool> _isMatchActionBlocked() async {
-    log('🚫 MATCH ACTION BLOCKED CHECK: Current wickets = ${wickets.value}');
-
-    // Quick check without expensive database calls
     if (_isInningFinishedQuickCheck()) {
-      log('🚨 MATCH ACTION BLOCKED: Quick check triggered onTapMainButton()');
       onTapMainButton();
       return true;
     }
 
     if (await _isOverCompleted()) {
       _overCompleted.value = true;
-      log('Over completed - showing new bowler button');
       _showOverCompletedMessage();
       return true;
     }
@@ -674,65 +481,37 @@ class ScoreboardController extends GetxController with DebouncingMixin {
 
   /// Shows a brief message when user tries to act during over completion
   void _showOverCompletedMessage() {
-    Get.snackbar(
-      'Over Completed',
-      'Please select a new bowler to continue',
-      snackPosition: SnackPosition.TOP,
-      backgroundColor: Colors.orange.shade100,
-      colorText: Colors.orange.shade800,
+    showAppSnackBar(
+      title: 'Over Completed',
+      message: 'Please select a new bowler to continue',
+      type: AppSnackBarType.warning,
+      position: SnackPosition.TOP,
       duration: const Duration(seconds: 2),
-      margin: const EdgeInsets.all(16),
-      borderRadius: 8,
-      icon: const Icon(Icons.sports_cricket, color: Colors.orange),
+      icon: Icons.sports_cricket,
     );
   }
 
   /// Shows a message when user tries to act after match completion
   void _showMatchCompletedMessage() {
-    Get.snackbar(
-      'Match Completed',
-      'This match has ended. Only undo is allowed. Use undo to continue scoring if needed.',
-      snackPosition: SnackPosition.TOP,
-      backgroundColor: Colors.red.shade100,
-      colorText: Colors.red.shade800,
+    showAppSnackBar(
+      title: 'Match Completed',
+      message: 'This match has ended. Only undo is allowed. Use undo to continue scoring if needed.',
+      type: AppSnackBarType.error,
+      position: SnackPosition.TOP,
       duration: const Duration(seconds: 3),
-      margin: const EdgeInsets.all(16),
-      borderRadius: 8,
-      icon: const Icon(Icons.block, color: Colors.red),
+      icon: Icons.block,
     );
   }
 
   // Quick check using cached values instead of database queries
   bool _isInningFinishedQuickCheck() {
-    // Check if already marked as completed
     if (_matchCompleted.value) {
-      log('✅ Quick check: Match already marked as completed');
       return true;
     }
-
-    // Check if overs are completed using cached value (allow small tolerance for floating point)
     bool oversFinished = currentOvers.value >= (totalOvers.value - 0.05);
+    bool possibleAllOut = false;
 
-    // Disable wicket logic in quick check - let comprehensive check handle all wicket logic
-    // This prevents premature triggering with incorrect player counts
-    bool possibleAllOut =
-        false; // Quick check disabled for wickets - comprehensive check will handle
-
-    if (oversFinished) {
-      log(
-        '⚡ Quick check: Overs possibly finished - ${currentOvers.value}/${totalOvers.value}',
-      );
-    }
-    if (possibleAllOut) {
-      log('⚡ Quick check: Possibly all out - ${wickets.value} wickets');
-    }
-
-    bool finished = oversFinished || possibleAllOut;
-    log(
-      '🎯 Quick inning finish check: ${finished ? "FINISHED" : "CONTINUING"} (Overs: ${currentOvers.value}/${totalOvers.value}, Wickets: ${wickets.value})',
-    );
-
-    return finished;
+    return oversFinished || possibleAllOut;
   }
 
   Future<PlayerModel?> _selectNewPlayer() async {
@@ -788,130 +567,90 @@ class ScoreboardController extends GetxController with DebouncingMixin {
     );
   }
 
-  Future<void> _promptNewBowlerSelection() async {
-    log('Over complete - showing new bowler selection UI');
-    // This method is now mainly for legacy support
-    // The main UI interaction is through onTapSelectNewBowler()
-    _overCompleted.value = true;
-  }
-
   /// Public method to be called from UI button
   Future<void> onTapSelectNewBowler() async {
     if (isDebouncing('selectNewBowler')) {
-      log('Bowler selection already in progress - ignoring tap');
       return;
     }
 
     debounceTap('selectNewBowler', () async {
-      log('User tapped select new bowler button');
-      await _selectNewBowler();
+      try {
+        final bowlingTeamId =
+        currentBattingTeamId.value == team1Id.value
+            ? team2Id.value
+            : team1Id.value;
+        final hiddenPlayerIds = [bowlerId.value];
+
+        final result = await Get.toNamed(
+          NAV_CHOOSE_PLAYER,
+          arguments: {
+            'teamId': bowlingTeamId,
+            'limit': 1,
+            'hiddenPlayerIds': hiddenPlayerIds,
+          },
+        );
+
+        if (result != null && result is List && result.isNotEmpty) {
+          final newBowler = result.cast<PlayerModel>().first;
+
+          bowler.value = newBowler.playerName ?? "Unknown";
+          bowlerId.value = newBowler.teamPlayerId ?? 0;
+
+          matchModel.bowlerId = bowlerId.value;
+          await _repo.updateMatch(matchModel);
+
+          await _resetBowlerStateForNewOver();
+          _justSelectedNewBowler.value = true;
+          _bowlerSelectionRetryCount.value = 0;
+          _overCompleted.value = false; // Reset over completion state
+
+          onTapSwap();
+
+          await _refreshCalculationsExceptBowler();
+
+        } else {
+          _bowlerSelectionRetryCount.value = 0;
+
+          // Show a message to the user
+          showAppSnackBar(
+            title: 'Selection Required',
+            message: 'Please select a new bowler to continue the match',
+            type: AppSnackBarType.warning,
+            position: SnackPosition.TOP,
+            icon: Icons.sports_cricket,
+          );
+        }
+      } catch (e) {
+        log('Error selecting new bowler: $e');
+      }
     }, delay: const Duration(milliseconds: 300));
   }
 
-  Future<void> _selectNewBowler() async {
-    try {
-      final bowlingTeamId =
-          currentBattingTeamId.value == team1Id.value
-              ? team2Id.value
-              : team1Id.value;
-      final hiddenPlayerIds = [bowlerId.value];
-
-      final result = await Get.toNamed(
-        NAV_CHOOSE_PLAYER,
-        arguments: {
-          'teamId': bowlingTeamId,
-          'limit': 1,
-          'hiddenPlayerIds': hiddenPlayerIds,
-        },
-      );
-
-      if (result != null && result is List && result.isNotEmpty) {
-        final newBowler = result.cast<PlayerModel>().first;
-
-        bowler.value = newBowler.playerName ?? "Unknown";
-        bowlerId.value = newBowler.teamPlayerId ?? 0;
-
-        matchModel.bowlerId = bowlerId.value;
-        await _repo.updateMatch(matchModel);
-
-        await _resetBowlerStateForNewOver();
-        _justSelectedNewBowler.value = true;
-        _bowlerSelectionRetryCount.value = 0;
-        _overCompleted.value = false; // Reset over completion state
-
-        onTapSwap();
-
-        await _refreshCalculationsExceptBowler();
-
-        log('New bowler selected: ${newBowler.playerName} is now bowling.');
-      } else {
-        // User cancelled selection - don't retry automatically
-        log('Bowler selection cancelled by user');
-        _bowlerSelectionRetryCount.value = 0;
-
-        // Show a message to the user
-        Get.snackbar(
-          'Selection Required',
-          'Please select a new bowler to continue the match',
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: Colors.orange.shade100,
-          colorText: Colors.orange.shade800,
-          duration: const Duration(seconds: 3),
-          margin: const EdgeInsets.all(16),
-          borderRadius: 8,
-          icon: const Icon(Icons.sports_cricket, color: Colors.orange),
-        );
-
-        // Keep the over completion state so the button remains visible
-        // User can tap again when ready
-      }
-    } catch (e) {
-      log('Error selecting new bowler: $e');
-    }
-  }
 
   Future<void> _checkSecondInningResult() async {
     final currentScore = totalRuns.value;
     final targetScore = firstInningScore.value;
 
-    log(
-      '🎯 Checking 2nd inning result: currentScore=$currentScore, targetScore=$targetScore, teamWinDialogShown=${_teamWinDialogShown.value}',
-    );
-
-    // If score dropped below target (e.g., after undo), reset win dialog flag
     if (currentScore <= targetScore && _teamWinDialogShown.value) {
       _teamWinDialogShown.value = false;
-      log(
-        'Score dropped to $currentScore (target: $targetScore) - reset win dialog flag',
-      );
     }
 
-    // Only check if dialog hasn't been shown for current winning state
     if (currentScore > targetScore && !_teamWinDialogShown.value) {
-      // Team beats the target score - they win!
-      log('🏆 Team WIN detected: $currentScore > $targetScore');
       _teamWinDialogShown.value = true;
       await _handleTeamWinResult();
     }
-    // NOTE: We DON'T check for ties here during regular play!
-    // Ties are ONLY checked when match ends (all out or overs complete)
   }
 
   Future<void> _showTieDialog() async {
-    // Automatically end match and set up tie result
-    await _calculateAndSetMatchResult(); // This will set result as "Match tied"
+    await _calculateAndSetMatchResult();
     await _repo.endMatch(matchId);
 
-    // Set match completed state
     _matchCompleted.value = true;
 
-    // Show match end dialog if not already shown
     if (!_matchEndDialogShown.value) {
       _matchEndDialogShown.value = true;
       await _showMatchEndDialog();
     }
-
-    log('Match ended - declared as a tie: ${matchModel.result}');
   }
 
   Future<void> _showAllOutDialog() async {
@@ -925,8 +664,6 @@ class ScoreboardController extends GetxController with DebouncingMixin {
       final targetScore = firstInningScore.value;
 
       if (currentScore == targetScore && !_teamWinDialogShown.value) {
-        // Tie scenario - team all out with same score
-        log('🤝 Tie detected: Team all out with same score ($currentScore)');
         _teamWinDialogShown.value = true;
         _matchCompleted.value = true;
         await _showTieDialog();
@@ -985,7 +722,6 @@ class ScoreboardController extends GetxController with DebouncingMixin {
       final battingTeamId = currentBattingTeamId.value;
       log('🔍 COMPREHENSIVE CHECK: Starting for team $battingTeamId');
 
-      final totalPlayers = await _getCachedTeamSize(battingTeamId);
       log('🔢 TEAM SIZE RESULT: Team $battingTeamId has $totalPlayers players');
 
       // Show tie and win dialog only when total number of players - 1 wickets have happened
@@ -993,25 +729,12 @@ class ScoreboardController extends GetxController with DebouncingMixin {
         battingTeamId,
       );
       log(
-        '🎯 WICKET CALCULATION: Team $battingTeamId needs $requiredWickets wickets (${totalPlayers} players - 1)',
+        '🎯 WICKET CALCULATION: Team $battingTeamId needs $requiredWickets wickets ($totalPlayers players - 1)',
       );
 
       // Update UI with accurate values
       currentOvers.value = actualCurrentOvers;
       wickets.value = actualWickets;
-
-      log('📊 Inning status check:');
-      log('  - Overs: $actualCurrentOvers / ${totalOvers.value}');
-      log(
-        '  - Wickets: $actualWickets / $requiredWickets (total players: $totalPlayers, required = players - 1)',
-      );
-      log('  - Inning: ${inningNo.value}');
-      log(
-        '  - Match end condition: Wickets >= $requiredWickets OR Overs >= ${totalOvers.value}',
-      );
-      log(
-        '  - Team $battingTeamId has exactly $totalPlayers players in database',
-      );
 
       // Check completion conditions
       bool oversCompleted = actualCurrentOvers >= (totalOvers.value - 0.001);
@@ -1118,69 +841,16 @@ class ScoreboardController extends GetxController with DebouncingMixin {
     }
   }
 
-  Future<void> _showMatchCompleteDialog() async {
-    final battingTeamName =
-        currentBattingTeamId.value == team1Id.value ? team1.value : team2.value;
-
-    final result = await _showSimpleDialog(
-      title: "Match Complete!",
-      content:
-          "$battingTeamName completed ${totalOvers.value} overs.\n\nFinal Score: ${totalRuns.value}/${wickets.value}",
-      confirmText: "End Match",
-    );
-
-    if (result) {
-      await _handleMatchEnd();
-    }
-  }
-
-  // Cached team size to avoid repeated database calls
-  // Uses precise database COUNT query to determine exact number of players
-  Future<int> _getCachedTeamSize(int teamId) async {
-    final now = DateTime.now();
-
-    // Use cache if available and not expired (5 minutes)
-    if (_cachedTeamSize != null &&
-        _lastTeamSizeCheck != null &&
-        now.difference(_lastTeamSizeCheck!).inMinutes < 5) {
-      log(
-        '📋 Using cached team size for team $teamId: $_cachedTeamSize players',
-      );
-      return _cachedTeamSize!;
-    }
-
-    // Fetch actual player count from database using COUNT query
-    log('🔍 Querying database for actual player count of team $teamId');
-    _cachedTeamSize = await _repo.getTeamSize(teamId);
-    _lastTeamSizeCheck = now;
-
-    log(
-      '🎯 Team $teamId player count confirmed: $_cachedTeamSize (wickets needed for match end: ${_cachedTeamSize! - 1})',
-    );
-    return _cachedTeamSize!;
-  }
-
   /// Get required wickets for match end condition: total team players - 1
   /// This is the core logic for showing tie and win dialogs
   Future<int> _getRequiredWicketsForMatchEnd(int teamId) async {
-    final totalPlayers = await _getCachedTeamSize(teamId);
-    final requiredWickets = (totalPlayers - 1).clamp(1, 10);
-
-    log(
-      '🎯 Match end condition for team $teamId: $requiredWickets wickets required (total players: $totalPlayers)',
-    );
-
+    final requiredWickets = (totalPlayers - 1);
     return requiredWickets;
   }
 
 
-  /// Specialized method to check inning completion after wicket and show appropriate dialogs
-  /// This method is called after confirmation and player selection are complete
   Future<void> _checkWicketInningCompletionAndShowDialog() async {
     try {
-      log(
-        '🎯 WICKET COMPLETION CHECK: Starting after player selection complete',
-      );
 
       // Get accurate data from database
       final actualCurrentOvers = await _repo.calculateCurrentOvers(
@@ -1191,31 +861,19 @@ class ScoreboardController extends GetxController with DebouncingMixin {
         matchId,
         inningNo.value,
       );
-      final battingTeamId = currentBattingTeamId.value;
 
       // Update UI with accurate values
       currentOvers.value = actualCurrentOvers;
       wickets.value = actualWickets;
 
-      // Get team size and required wickets
-      final totalPlayers = await _getCachedTeamSize(battingTeamId);
       final requiredWickets = await _getRequiredWicketsForMatchEnd(
-        battingTeamId,
+        currentBattingTeamId.value,
       );
-
-      log(
-        '📊 WICKET COMPLETION: Overs: $actualCurrentOvers/${totalOvers.value}, Wickets: $actualWickets/$requiredWickets',
-      );
-      log(
-        '🎯 WICKET COMPLETION: Team $battingTeamId has $totalPlayers players, needs $requiredWickets wickets',
-      );
-
       // Check completion conditions
       bool oversCompleted = actualCurrentOvers >= (totalOvers.value - 0.001);
       bool allOut = actualWickets >= requiredWickets;
 
       if (oversCompleted) {
-        log('⏰ WICKET COMPLETION: Overs completed - handling inning end');
         _matchCompleted.value = true;
         if (inningNo.value == 1) {
           await _showInningCompleteDialog();
@@ -1226,17 +884,12 @@ class ScoreboardController extends GetxController with DebouncingMixin {
       }
 
       if (allOut) {
-        log('🏏 WICKET COMPLETION: All out condition met - handling all out');
         _matchCompleted.value = true;
         if (inningNo.value == 1) {
-          log(
-            '📋 WICKET COMPLETION: First inning all out - showing next inning dialog',
-          );
+
           await _showAllOutDialog();
         } else {
-          log(
-            '🏆 WICKET COMPLETION: Second inning all out - showing match result',
-          );
+
           await _handleSecondInningAllOut();
         }
         return;
@@ -1357,30 +1010,14 @@ class ScoreboardController extends GetxController with DebouncingMixin {
 
   // Immediately update critical stats without database queries
   void _updateCriticalStatsImmediately(int runs, int? isWide, int? isNoBall) {
-    // Update total runs immediately
-    totalRuns.value += runs;
-
-    // Update overs count immediately (only for legal deliveries)
-    if (isWide != 1 && isNoBall != 1) {
-      double currentOversValue = currentOvers.value;
-      double ballsInOver = (currentOversValue % 1) * 10;
-
-      // Only increment if we haven't reached the total overs yet
-      if (currentOversValue < totalOvers.value) {
-        if (ballsInOver >= 5) {
-          // Complete over - move to next over
-          currentOvers.value = (currentOversValue.floor() + 1).toDouble();
-        } else {
-          // Add one more ball to current over
-          currentOvers.value = currentOversValue + 0.1;
-        }
-      }
-    }
-
-    // Update CRR immediately (approximate)
-    if (currentOvers.value > 0) {
-      crr.value = totalRuns.value / currentOvers.value;
-    }
+    ScoreboardHelpers.updateCriticalMatchStats(
+      totalRuns: totalRuns,
+      currentOvers: currentOvers,
+      crr: crr,
+      totalOversLimit: totalOvers.value,
+      runsToAdd: runs,
+      isLegalDelivery: (isWide != 1 && isNoBall != 1),
+    );
   }
 
   Future<void> _refreshCalculationsExceptBowler() async {
@@ -1425,25 +1062,17 @@ class ScoreboardController extends GetxController with DebouncingMixin {
 
   // Immediately update batsman stats without database query
   void _updateBatsmanStatsImmediately(int runs) {
-    // Update striker batsman runs
-    final currentStats = Map<String, double>.from(strikerBatsmanState);
-    currentStats['runs'] = (currentStats['runs'] ?? 0) + runs;
-    currentStats['balls'] = (currentStats['balls'] ?? 0) + 1;
-
-    // Update boundaries
-    if (runs == 4) {
-      currentStats['fours'] = (currentStats['fours'] ?? 0) + 1;
-    } else if (runs == 6) {
-      currentStats['sixes'] = (currentStats['sixes'] ?? 0) + 1;
-    }
-
-    strikerBatsmanState.value = currentStats;
+    strikerBatsmanState.value = ScoreboardHelpers.updateBatsmanStatsOptimistic(
+      strikerBatsmanState,
+      runs,
+      isBye: isByeSelected.value,
+    );
   }
 
   Future<void> calculateBowler() async {
     try {
       if (bowlerId.value == 0) {
-        bowlerState.value = _getEmptyBowlerState();
+        bowlerState.value = ScoreboardHelpers.getEmptyBowlerState();
         return;
       }
 
@@ -1458,31 +1087,13 @@ class ScoreboardController extends GetxController with DebouncingMixin {
       bowlerState.value = result;
     } catch (e) {
       log('Error in calculateBowler: $e');
-      bowlerState.value = _getEmptyBowlerState();
+      bowlerState.value = ScoreboardHelpers.getEmptyBowlerState();
     }
   }
 
   Future<void> _resetBowlerStateForNewOver() async {
-    bowlerState.value = _getEmptyBowlerState();
-    oversState.value = {
-      'ballSequence': [],
-      'overDisplay': '',
-      'legalBallsCount': 0,
-      'isOverComplete': false,
-      'runsInOver': 0,
-      'wicketsInOver': 0,
-      'remainingBalls': 6,
-    };
-  }
-
-  Map<String, double> _getEmptyBowlerState() {
-    return {
-      'overs': 0.0,
-      'maidens': 0.0,
-      'runs': 0.0,
-      'wickets': 0.0,
-      'ER': 0.0,
-    };
+    bowlerState.value = ScoreboardHelpers.getEmptyBowlerState();
+    oversState.value = ScoreboardHelpers.getEmptyOverState();
   }
 
   Future<void> calculateOversState() async {
@@ -1508,10 +1119,10 @@ class ScoreboardController extends GetxController with DebouncingMixin {
       Get.back();
     } catch (e) {
       errorMessage.value = "Failed to resume match: ${e.toString()}";
-      _showSnackbar(
-        "Error",
-        "Failed to resume match. Please try again.",
-        Colors.red,
+      showAppSnackBar(
+        title: "Error",
+        message: "Failed to resume match. Please try again.",
+        type: AppSnackBarType.error,
       );
       log('Error in resumeMatch: $e');
     } finally {
@@ -1551,10 +1162,10 @@ class ScoreboardController extends GetxController with DebouncingMixin {
     } catch (e, stackTrace) {
       log('❌ Error in onTapEndMatch: $e');
       log('📍 Stack trace: $stackTrace');
-      _showSnackbar(
-        "Error",
-        "Failed to process match end. Please try again.",
-        Colors.red,
+      showAppSnackBar(
+        title: "Error",
+        message: "Failed to process match end. Please try again.",
+        type: AppSnackBarType.error,
       );
     } finally {
       isMainButtonLoading.value = false;
@@ -1578,10 +1189,10 @@ class ScoreboardController extends GetxController with DebouncingMixin {
       }
     } catch (e) {
       errorMessage.value = "Failed to end match: ${e.toString()}";
-      _showSnackbar(
-        "Error",
-        "Failed to end match. Please try again.",
-        Colors.red,
+      showAppSnackBar(
+        title: "Error",
+        message: "Failed to end match. Please try again.",
+        type: AppSnackBarType.error,
       );
       log('Error in endMatchFromDialog: $e');
     } finally {
@@ -1590,243 +1201,20 @@ class ScoreboardController extends GetxController with DebouncingMixin {
   }
 
   Future<bool> _showEndMatchConfirmationDialog() async {
-    return await Get.dialog<bool>(
-          AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            title: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.shade100,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.warning_amber,
-                    color: Colors.orange.shade700,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    "End Match?",
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 18,
-                      color: Colors.grey.shade800,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "Are you sure you want to end this match without completing the 2nd inning?",
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey.shade700,
-                    height: 1.4,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.red.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.red.shade200),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.info_outline,
-                        color: Colors.red.shade600,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          "This action cannot be undone. The match result will be calculated based on current scores.",
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.red.shade700,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  "Current Score: ${totalRuns.value}/${wickets.value} (${currentOvers.value}/${totalOvers.value} overs)",
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey.shade600,
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Get.back(result: false),
-                child: Text(
-                  "Cancel",
-                  style: TextStyle(
-                    color: Colors.grey.shade600,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              ElevatedButton(
-                onPressed: () => Get.back(result: true),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red.shade600,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.stop_circle, size: 18),
-                    const SizedBox(width: 6),
-                    const Text(
-                      "End Match",
-                      style: TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          barrierDismissible: false,
-        ) ??
-        false;
+    return await _showSimpleDialog(
+      title: "End Match?",
+      content: "Are you sure you want to end this match without completing the 2nd inning?\n\nThis action cannot be undone. The match result will be calculated based on current scores.\n\nCurrent Score: ${totalRuns.value}/${wickets.value} (${currentOvers.value}/${totalOvers.value} overs)",
+      confirmText: "End Match",
+    );
   }
 
   /// Show network required dialog
   Future<bool> _showNetworkRequiredDialog() async {
-    return await Get.dialog<bool>(
-          AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            title: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.red.shade100,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.wifi_off,
-                    color: Colors.red.shade700,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    "Network Required",
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 18,
-                      color: Colors.grey.shade800,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "An active internet connection is required to end the match without completing the 2nd inning.",
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey.shade700,
-                    height: 1.4,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.blue.shade200),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.info_outline,
-                        color: Colors.blue.shade600,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          "Please check your Wi-Fi or mobile data connection and try again.",
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.blue.shade700,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Get.back(result: false),
-                child: Text(
-                  "Cancel",
-                  style: TextStyle(
-                    color: Colors.grey.shade600,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              ElevatedButton(
-                onPressed: () => Get.back(result: true),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue.shade600,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.refresh, size: 18),
-                    const SizedBox(width: 6),
-                    const Text(
-                      "Retry",
-                      style: TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          barrierDismissible: false,
-        ) ??
-        false;
+    return await _showSimpleDialog(
+      title: "Network Required",
+      content: "An active internet connection is required to end the match without completing the 2nd inning.\n\nPlease check your Wi-Fi or mobile data connection and try again.",
+      confirmText: "Retry",
+    );
   }
 
   /// Check if match is naturally completed
@@ -1886,10 +1274,10 @@ class ScoreboardController extends GetxController with DebouncingMixin {
             // Retry network check
             hasNetwork = await connectivityService.hasInternetConnection();
             if (!hasNetwork) {
-              _showSnackbar(
-                "No Network",
-                "Please check your internet connection and try again.",
-                Colors.red,
+              showAppSnackBar(
+                title: "No Network",
+                message: "Please check your internet connection and try again.",
+                type: AppSnackBarType.error,
               );
               return;
             }
@@ -1922,10 +1310,10 @@ class ScoreboardController extends GetxController with DebouncingMixin {
       }
     } catch (e) {
       log('Error in _handleManualMatchEnd: $e');
-      _showSnackbar(
-        "Error",
-        "Failed to end match. Please try again.",
-        Colors.red,
+      showAppSnackBar(
+        title: "Error",
+        message: "Failed to end match. Please try again.",
+        type: AppSnackBarType.error,
       );
     }
   }
@@ -1977,203 +1365,42 @@ class ScoreboardController extends GetxController with DebouncingMixin {
   }
 
   Future<void> _calculateAndSetMatchResult() async {
-    final secondInningScore = totalRuns.value;
-    final firstInningScore = this.firstInningScore.value;
-
-    log(
-      '🏆 Calculating match result: Team2Score=$secondInningScore, Team1Score=$firstInningScore',
+    final resultData = ScoreboardHelpers.calculateMatchResult(
+      secondInningScore: totalRuns.value,
+      firstInningScore: firstInningScore.value,
+      wickets: wickets.value,
+      currentBattingTeamId: currentBattingTeamId.value,
+      team1Id: team1Id.value,
+      team2Id: team2Id.value,
+      team1Name: team1.value,
+      team2Name: team2.value,
     );
 
-    String result;
-    String winnerTeam;
-    int winnerTeamId;
-
-    if (secondInningScore > firstInningScore) {
-      winnerTeamId = currentBattingTeamId.value;
-      winnerTeam =
-          currentBattingTeamId.value == team1Id.value
-              ? team1.value
-              : team2.value;
-      final margin = secondInningScore - firstInningScore;
-      result = "$winnerTeam won by $margin runs";
-      log('🏅 TEAM 2 WINS: $result');
-    } else if (firstInningScore > secondInningScore) {
-      winnerTeamId =
-          currentBattingTeamId.value == team1Id.value
-              ? team2Id.value
-              : team1Id.value;
-      winnerTeam = winnerTeamId == team1Id.value ? team1.value : team2.value;
-      final margin = 10 - wickets.value;
-      result = "$winnerTeam won by $margin wickets";
-      log('🏅 TEAM 1 WINS: $result');
-    } else {
-      winnerTeamId = 0;
-      winnerTeam = "Tie";
-      result = "Match tied";
-      log('🤝 MATCH TIED: $result');
-    }
-
     matchModel.status = 'completed';
-    matchModel.result = result;
-    matchModel.winnerTeamId = winnerTeamId;
+    matchModel.result = resultData['result'];
+    matchModel.winnerTeamId = resultData['winnerTeamId'];
 
-    log('📝 Final match result set: ${matchModel.result}');
   }
 
   /// Show match end dialog with View Result and Stay Here buttons
   Future<void> _showMatchEndDialog() async {
-    log(
-      '🎭 _showMatchEndDialog called - preparing to show match result dialog',
+
+    final result = await showAppDialog<String>(
+      title: "Match Complete!",
+      contentText: "${matchModel.result ?? 'The match has been completed!'}\n\nWhat would you like to do?\n• View Result: See detailed match results\n• Stay Here: Continue on this screen",
+      cancelText: "Stay Here",
+      confirmText: "View Result",
+      onCancel: () {
+        _userChoseStayAfterMatchEnd.value = true;
+        Get.back(result: 'stay');
+      },
+      onConfirm: () => Get.back(result: 'result'),
+      barrierDismissible: false,
     );
 
-    // Determine if it's a tie or win scenario for appropriate styling
-    final isTie = matchModel.result?.toLowerCase().contains('tied') ?? false;
-    final dialogColor = isTie ? Colors.blue : Colors.green;
-    final dialogIcon = isTie ? Icons.handshake : Icons.emoji_events;
-
-    log('🎨 Dialog styling - isTie: $isTie, result: ${matchModel.result}');
-    log('🎪 About to show Get.dialog...');
-
-    final result = await Get.dialog<String>(
-      AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: dialogColor.shade100,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(dialogIcon, color: dialogColor.shade700, size: 24),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                "Match Complete!",
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 18,
-                  color: Colors.grey.shade800,
-                ),
-              ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: dialogColor.shade50,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: dialogColor.shade200),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    isTie ? Icons.balance : Icons.celebration,
-                    color: dialogColor.shade700,
-                    size: 18,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      matchModel.result ?? "The match has been completed!",
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: dialogColor.shade700,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              "What would you like to do?",
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey.shade700,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              "• View Result: See detailed match results",
-              style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
-            ),
-            Text(
-              "• Stay Here: Continue on this screen",
-              style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              _userChoseStayAfterMatchEnd.value = true;
-              Navigator.of(Get.context!).pop('stay');
-            },
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            ),
-            child: Text(
-              "Stay Here",
-              style: TextStyle(
-                color: Colors.grey.shade600,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(Get.context!).pop('result');
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: dialogColor.shade600,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.assessment, size: 18),
-                const SizedBox(width: 6),
-                const Text(
-                  "View Result",
-                  style: TextStyle(fontWeight: FontWeight.w600),
-                ),
-              ],
-            ),
-          ),
-        ],
-        actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-      ),
-      barrierDismissible: false, // Prevent dismissing without making a choice
-    );
-
-    log('📋 Dialog closed with result: $result');
-
-    // Handle the user's choice
     if (result == 'result') {
-      log('📋 User chose to view results - navigating to result page');
       Get.offNamed(NAV_RESULT, arguments: {'matchId': matchId});
-    } else if (result == 'stay') {
-      log('📋 User chose to stay on scoreboard after match completion');
-      // User stays on the current screen, actions will be blocked
-    } else {
-      log('⚠️ Unexpected dialog result: $result');
     }
-
-    log('🎭 _showMatchEndDialog completed');
   }
 
   /// Navigate to match results view
@@ -2184,21 +1411,6 @@ class ScoreboardController extends GetxController with DebouncingMixin {
       log('Navigating to match results view');
       Get.toNamed(NAV_RESULT, arguments: {'matchId': matchId});
     }, delay: const Duration(milliseconds: 300));
-  }
-
-  Future<void> _handlePostMatchNavigation(String option) async {
-    switch (option) {
-      case 'result':
-        Get.offNamed(NAV_RESULT, arguments: {'matchId': matchId});
-        break;
-      case 'history':
-        log('Match completed and saved to history');
-        Get.offAllNamed(NAV_DASHBOARD_PAGE, arguments: {'initialTab': 1});
-        break;
-      default:
-        Get.offNamed(NAV_RESULT, arguments: {'matchId': matchId});
-        break;
-    }
   }
 
   Future<void> _handleTeamWinResult() async {
@@ -2242,16 +1454,12 @@ class ScoreboardController extends GetxController with DebouncingMixin {
       matchModel.bowlerId = bowlerId.value;
       await _repo.updateMatch(matchModel);
       await _refreshAllCalculations();
-
-      log(
-        'Previous over restored - Bowler: ${bowler.value}, Striker: ${strikerBatsman.value}, Non-Striker: ${nonStrikerBatsman.value}',
-      );
     } catch (e) {
       log('Error restoring previous over state: $e');
-      _showSnackbar(
-        "Error",
-        "Failed to restore previous state: ${e.toString()}",
-        Colors.red,
+      showAppSnackBar(
+        title: "Error",
+        message: "Failed to restore previous state: ${e.toString()}",
+        type: AppSnackBarType.error,
       );
     }
   }
@@ -2261,67 +1469,54 @@ class ScoreboardController extends GetxController with DebouncingMixin {
   //region Helper Methods
   //==========================================================================
 
+  /// Simple confirmation dialog using custom dialog from common_widgets
   Future<bool> _showSimpleDialog({
     required String title,
     required String content,
     required String confirmText,
     String cancelText = "Cancel",
   }) async {
-    return await Get.dialog<bool>(
-          AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            title: Text(
-              title,
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            content: Text(content, style: TextStyle(fontSize: 14)),
-            actions: [
-              TextButton(
-                onPressed: () => Get.back(result: false),
-                child: Text(
-                  cancelText,
-                  style: TextStyle(
-                    color: Colors.grey.shade600,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+    bool? result = await Get.dialog<bool>(
+      AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Text(
+          title,
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        content: Text(content, style: const TextStyle(fontSize: 14)),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(result: false),
+            child: Text(
+              cancelText,
+              style: TextStyle(
+                color: Colors.grey.shade600,
+                fontWeight: FontWeight.w600,
               ),
-              ElevatedButton(
-                onPressed: () => Get.back(result: true),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue.shade600,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: Text(
-                  confirmText,
-                  style: TextStyle(fontWeight: FontWeight.w600),
-                ),
-              ),
-            ], 
+            ),
           ),
-          barrierDismissible: false,
-        ) ??
-        false;
-  }
-
-  void _showSnackbar(String title, String message, MaterialColor color) {
-    Get.snackbar(
-      title,
-      message,
-      backgroundColor: color.shade100,
-      colorText: color.shade800,
-      snackPosition: SnackPosition.BOTTOM,
-      duration: Duration(seconds: 3),
-      borderRadius: 12,
-      margin: EdgeInsets.all(16),
+          ElevatedButton(
+            onPressed: () => Get.back(result: true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue.shade600,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: Text(
+              confirmText,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+      barrierDismissible: false,
     );
+    return result ?? false;
   }
-
   //endregion
 
   updateStatus() async {
@@ -2329,7 +1524,7 @@ class ScoreboardController extends GetxController with DebouncingMixin {
     // Fallback: Just mark as completed without detailed result
     await db.update(
       TBL_MATCHES,
-      {'status': 'completed', 'completedAt': DateTime.now().toIso8601String()},
+      {'status': 'completed'},
       where: 'id = ?',
       whereArgs: [matchId],
     );

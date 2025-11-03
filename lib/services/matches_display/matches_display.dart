@@ -14,12 +14,8 @@ class MatchesDisplay {
       }
       int uid = model.uid!;
 
-      log('📡 Fetching user matches for UID: $uid');
-
-      // Add timestamp parameter to prevent caching
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
       Map<String, dynamic> data = await apiServices.get(
-        "/CL_Matches/GetMatchesByUser/$uid?t=$timestamp",
+        "/CL_Matches/GetMatchesByUser/$uid",
       );
 
       List<MatchModel> matches = [];
@@ -27,7 +23,6 @@ class MatchesDisplay {
       // Check if matches data exists and is a list
       if (data.containsKey("matches") && data["matches"] is List) {
         List<dynamic> rawMatches = data["matches"] as List<dynamic>;
-        log('📋 Raw matches received: ${rawMatches.length}');
 
         for (dynamic matchData in rawMatches) {
           if (matchData is Map<String, dynamic>) {
@@ -35,13 +30,10 @@ class MatchesDisplay {
               // Always try to create MatchModel, regardless of matchState
               MatchModel model = MatchModel.fromMap(matchData);
               matches.add(model);
-              log(
-                '✅ Successfully created match model: ${model.id} - ${model.status}',
-              );
+
             } catch (e) {
               log('❌ Error creating match model: ${e.toString()}');
               log('🔍 Problematic match data: $matchData');
-              // Continue with other matches instead of failing completely
             }
           } else {
             log('⚠️ Invalid match data format: $matchData');
@@ -55,15 +47,6 @@ class MatchesDisplay {
       // Log matches info safely
       if (matches.isEmpty) {
         log("🔍 No valid matches found for user (UID: $uid)");
-      } else {
-        log("📊 Total matches parsed: ${matches.length}");
-        // Log match statuses for debugging
-        final statusCounts = <String, int>{};
-        for (var match in matches) {
-          final status = match.status?.toLowerCase() ?? 'unknown';
-          statusCounts[status] = (statusCounts[status] ?? 0) + 1;
-        }
-        log('📈 Match statuses: $statusCounts');
       }
 
       return matches;

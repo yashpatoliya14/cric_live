@@ -264,7 +264,7 @@ class ShiftInningController extends GetxController {
     log('Force starting second inning - players can be selected later');
     
     showAppDialog(
-      onMain: () async {
+      onConfirm: () async {
         try {
           isLoading.value = true;
 
@@ -339,8 +339,9 @@ class ShiftInningController extends GetxController {
         }
       },
       title: "Start Second Inning?",
-      closeText: "Cancel",
-      mainText: "Start",
+
+      cancelText: "Cancel",
+      confirmText: "Start",
     );
   }
 

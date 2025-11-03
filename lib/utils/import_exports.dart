@@ -101,7 +101,7 @@ export 'package:cric_live/features/result_view/result_view.dart';
 export 'package:cric_live/features/result_view/services/result_service.dart';
 // Features - Scoreboard
 export 'package:cric_live/features/scoreboard_view/scoreboard_controller.dart';
-export 'package:cric_live/features/scoreboard_view/scoreboard_model.dart';
+export 'package:cric_live/features/scoreboard_view/models/scoreboard_model.dart';
 export 'package:cric_live/features/scoreboard_view/scoreboard_queries.dart';
 export 'package:cric_live/features/scoreboard_view/scoreboard_repo.dart';
 export 'package:cric_live/features/scoreboard_view/scoreboard_view.dart';
